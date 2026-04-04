@@ -72,7 +72,6 @@ def create_tables ():
                 -- '{"menarche_age": 12, "last_menstruation_date": "2026-03-15", "cycle": "28/5", "pregnancies": 2, "births": 1, "c_sections": 1, "abortions": 0, "menopause_age": null, "contraceptive": "IUD"}'   
 
             gynecological_background TEXT,
-
                       
             --------------- family history. ------------------
                    
