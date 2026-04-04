@@ -25,7 +25,8 @@ def create_tables ():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS patients (
                    
-            -- Personal information
+            --------------- Personal information ---------------
+                   
             document_id TEXT PRIMARY KEY,
             names TEXT NOT NULL,
             surnames TEXT NOT NULL, 
@@ -41,19 +42,39 @@ def create_tables ():
             occupation TEXT NOT NULL,
             marital_status TEXT NOT NULL,         
 
-            -- Medical interview
+            ------------ Medical interview -------------
+            
+            -------- personal background --------
                    
-                -- personal background.
-                      
-                -- Stores: Chronic diseases, surgeries, allergies, vaccines, habits, and medications.
+            cardiovascular TEXT,
+            respiratory TEXT,
+            gastrointestinal TEXT,
+            nephrourological TEXT,
+            neurological TEXT,
+            infectious_diseases TEXT,
+            endocrinological TEXT,
+            traumatological TEXT,
+            allergic TEXT,
+
+                                      
+            personal_background TEXT,
+
+            ----------- personal_background stores: Chronic diseases, surgeries, allergies, vaccines, habits, and medications -------------------
                 -- How is it passed?: From the API (Python), you retrieve a dictionary and use `json.dumps(dictionary)`.
                 -- How is it stored?: It is saved as a single line of plain text (String).
                 -- Example of 1-line formatting:
-                -- '{"chronic_diseases": "None", "surgeries": "Appendectomy 2015", "allergies": {"drugs": "Penicillin", "food": "None"}, "vaccines": "COVID-19, Tetanus", "toxic_habits": {"tobacco": "No", "alcohol": "Social"}, "daily_medication": "None", "physiological_habits": {"dream":" 6 hours", } }
-                   
-            personal_background TEXT,
+                -- '{"chronic_diseases": "None", "surgeries": "Appendectomy 2015", "allergies": {"drugs": "Penicillin", "food": "None"}, "vaccines": "COVID-19, Tetanus", "toxic_habits": {"tobacco": "No", "alcohol": "Social, "illicit_drugs": "No"}, "daily_medication": "None", "physiological_habits": {"dream":" 6 hours", "coffee_consuumption":"Regular", "sexual":"None" } }              
 
-                -- family history.
+            -------- Gynecological and Obstetric Background (AGO) ------------
+                -- Stores: Menarche, LMP, menstrual rhythm, pregnancies, deliveries, cesarean sections, abortions, menopause
+                -- How is it handled? If gender == "male", then this value could be NULL or "{}"  
+                -- Example if gender == "female":
+                -- '{"menarche_age": 12, "last_menstruation_date": "2026-03-15", "cycle": "28/5", "pregnancies": 2, "births": 1, "c_sections": 1, "abortions": 0, "menopause_age": null, "contraceptive": "IUD"}'   
+
+            gynecological_background TEXT,
+
+                      
+            --------------- family history. ------------------
                    
                 -- Stores: Hereditary or risk diseases (diabetes, hypertension).
                 -- How is it passed?: The same way, you use json.dumps(python_dictionary).
@@ -79,17 +100,16 @@ def create_tables ():
 
            -- Vital Signs & Anthropometry 
            weight REAL,              
-           height REAL,              
-           bmi REAL,                 
+           height REAL,                               
            blood_pressure TEXT,      
            heart_rate INTEGER,       
            respiratory_rate INTEGER, 
            temperature REAL,         
 
            -- Qualitative Physical Examination (Examen Físico Descriptivo)
-           -- Almacena en JSON: impresion_general, constitucion, facies, actitud, decubito, 
-           -- marcha, piel, cabeza, cuello, respiratorio, cardiovascular, abdomen, neurologico.
-           -- Ejemplo: '{"general_impression": "Paciente estable", "head": "Normocéfalo", "abdomen": "Blando, depresible"}'
+           -- Stored in a JSON: general_impression, constitution, facies, attitude, decubitus, 
+           -- gait, skin, head, neck, respiratory, cardiovascular, abdomen, neurological.
+           -- example: '{"general_impression": "Paciente estable", "head": "Normocéfalo", "abdomen": "Blando, depresible"}'
            physical_examination TEXT,
 
            diagnostic TEXT NOT NULL,
