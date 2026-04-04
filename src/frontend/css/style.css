@@ -1,0 +1,28 @@
+
+body{
+    
+}
+#receptionContainer{
+    padding: 20vh;
+}
+.logo{
+    display: flex;
+    gap: 20pv;
+    align-items: center;
+    justify-content: center;
+}
+#receptionButtons{
+     display: flex;
+    gap: 20px;
+    align-items: center;
+    justify-content: center;
+}
+#receptionButton, button{
+    background-color: white;
+    color: rgb(24, 150, 150);
+    border:  5px solid;
+    width: 25vh;
+    height: 5vh;
+    border-color: aqua;
+   border-radius: 20px;
+}
