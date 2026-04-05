@@ -1,6 +1,11 @@
 
 *{
     box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+}
+.hidden{
+    display:none !important;
 }
 #receptionContainer{
     padding: 20vh;
@@ -25,4 +30,15 @@
     height: 5vh;
     border-color: aqua;
    border-radius: 20px;
+}
+/* Interface */
+#interfaceMainContainer{
+    background-color: blue;
+    padding: 15vh;
+}
+#interfaceContainer{
+    background-color: white;
+  width: 180vh;
+  height: 70vh;
+    
 }
