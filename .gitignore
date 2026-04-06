@@ -1,0 +1,21 @@
+# -------------- Python Environments ----------------------
+
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+-------- SQLite3 bd ----------------
+*.db
+*.sqlite3
+
+# --------- Uploaded files by the user ---------
+# We ignore PDFs or images uploaded during testing
+src/backend/uploads/*
+!src/backend/uploads/.gitkeep 
+
+# ------------------- SO Files -------------------
+.DS_Store
+Thumbs.db
