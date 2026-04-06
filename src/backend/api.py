@@ -11,7 +11,7 @@ from datetime import datetime
 # This line below allows than the js execute this function
 @eel.expose 
 def sign_in_doctor(user, password):
-    print(f"Try of register a new doctor: {user}")
+    print(f"Intento de registro del nuevo doctor: {user}")
 
     # validation of whether the username or password is null
     if not user or not password:
@@ -34,7 +34,7 @@ def sign_in_doctor(user, password):
 
         return {
             "status":"success",
-            "msg":"Successfully registered physician",
+            "msg":"Doctor registrado exitosamente",
             "doctor_id": new_id
         }
     
@@ -51,8 +51,6 @@ def sign_in_doctor(user, password):
             "msg": f"Error interno del servidor al registrar: {str(e)}"
         }
     
-
-
 # function to login a doctor 
 @eel.expose
 def verify_doctor_login (user, password):
@@ -88,7 +86,6 @@ def verify_doctor_login (user, password):
             "msg": f"Server error: {str(e)}"
         }
     
-
 # Setup of date
 def setup_intern_date(date):
     try:
@@ -97,6 +94,49 @@ def setup_intern_date(date):
     except ValueError:
         raise ValueError(f"Formato de fecha inválido: {date}. Use YYYY-MM-DD.")  
 
+#@DiegoACastroQ you most save the file in a folder like "src/backend/uploads/"
+# because send the file it's not optimal since you have to send the .py file to 
+# be saved instead of saving it directly with the JS.
+@eel.expose
+def upload_attached_exams(query_id, exam_name, file_path, upload_date):
+    print(f"Uploading exam: {exam_name} for query ID: {query_id}")
+
+    try:
+        # We format the date in the desired scheme
+        formatted_date = setup_intern_date(upload_date)
+
+        # We open the connection with the db
+        connection = db.connect()
+        cursor = connection.cursor()
+
+        # Save of the attachment
+        cursor.execute('''
+            INSERT INTO attached_exams(
+                query_id, exam_name, file_path, upload_date           
+            ) VALUES (?, ?, ?, ?)
+        ''', (query_id, exam_name, file_path, formatted_date))
+
+        # We seal the box. Only one table is updated here.
+        connection.commit()
+        connection.close()
+
+        return {
+            "status": "success", 
+            "msg": f"Attached file {exam_name} saved successfully." 
+        }
+        
+    except sql.IntegrityError:
+        # Integrity error here usually means the query_id doesn't exist
+        return {
+            "status": "error", 
+            "msg": f"Database constraint failed. Ensure the query ID '{query_id}' exists."
+        }
+    except ValueError as ve:
+        return {"status": "error", "msg": str(ve)}
+    except Exception as e:
+        return {"status": "fatal", "msg": f"Server error: {str(e)}"}
+
+        
 @eel.expose 
 def register_new_patient_and_consult (patient, consult):
     """
@@ -104,7 +144,7 @@ def register_new_patient_and_consult (patient, consult):
     patient = {"document_id": "V-123", "names": "Juan", ... "personal_background": {...}}
     consult = {"date": "2026-04-04", "motive": "Fiebre", ... "physical_examination": {...}}
     """
-    print(f"Registrando nuevo patient: {patient.get('document_id')}")
+    print(f"Registrando nuevo paciente: {patient.get('document_id')}")
     
     try:
         # We clean and validate the date using "setup_intern_date(date)"
@@ -157,19 +197,22 @@ def register_new_patient_and_consult (patient, consult):
             examen_phisic_json, consult['diagnostic'], consult.get('treatment', '')
         ))
 
+        # We capture the newly generated ID for the consultation
+        new_query_id = cursor.lastrowid
         # We seal the box. If we get this far without errors, both tables will be updated.
         conexion.commit()
         conexion.close()
         
         return {
             "status": "success", 
-            "mensaje": f"patient {patient['names']} y su primera consult guardados con éxito."
+            "mensaje": f"Paciente {patient['names']} y su primera consulta guardados exitosamente.",
+            "query_id": new_query_id
         }
         
     except sql.IntegrityError:
         return {
             "status": "error", 
-            "mensaje": f"El patient con cédula {patient.get('document_id')} ya existe en el sistema."
+            "mensaje": f"El paciente con cédula {patient.get('document_id')} ya existe en el sistema."
         }
     except ValueError as ve:
         return {"status": "error", "mensaje": str(ve)}
@@ -260,12 +303,15 @@ def add_new_consult(consult):
             examen_phisic_json, consult['diagnostic'], consult.get('treatment', '')
         ))
         
+        # We capture the newly generated ID for the consultation
+        new_query_id = cursor.lastrowid
         conexion.commit()
         conexion.close()
         
         return {
             "status": "success", 
-            "msg": "New medical consult added successfully."
+            "msg": "New medical consult added successfully.",
+            "query_id": new_query_id
         }
         
     except Exception as e:
@@ -285,13 +331,13 @@ def get_full_patient_history(document_id):
         conexion.row_factory = sql.Row 
         cursor = conexion.cursor()
         
-        # 1. Fetch the patient profile (Portada)
+        # Fetch the patient profile (Portada)
         cursor.execute("SELECT * FROM patients WHERE document_id = ?", (document_id,))
         patient_row = cursor.fetchone()
         
         if not patient_row:
             conexion.close()
-            return {"status": "error", "msg": "Patient not found."}
+            return {"status": "error", "msg": "Paciente no encontrado."}
             
         # Convert the sqlite3.Row to a standard Python dictionary
         patient_data = dict(patient_row)
@@ -302,7 +348,7 @@ def get_full_patient_history(document_id):
         patient_data['gynecological_background'] = json.loads(patient_data['gynecological_background'] or '{}')
         patient_data['family_background'] = json.loads(patient_data['family_background'] or '{}')
         
-        # 2. Fetch ALL consultations for this patient ordered by date (newest first)
+        # Fetch all consultations for this patient ordered by date (newest first)
         cursor.execute("SELECT * FROM queries WHERE patient_document_id = ? ORDER BY date DESC", (document_id,))
         queries_rows = cursor.fetchall()
         
@@ -324,5 +370,85 @@ def get_full_patient_history(document_id):
         }
         
     except Exception as e:
-        return {"status": "fatal", "msg": f"Server error fetching history: {str(e)}"}
+        return {"status": "fatal", "msg": f"Error en la base de datos buscando el paciente: {str(e)}"}
+    
+@eel.expose
+def search_patients(search_term):
+    """
+    Searches for patients by document_id, names, or surnames.
+    Returns a brief list of matches for the frontend search bar.
+    """
+    print(f"Searching for patient with term: {search_term}")
+    
+    # If the search bar is empty, return an empty list safely
+    if not search_term or str(search_term).strip() == "":
+        return {"status": "success", "results": []}
+        
+    try:
+        conexion = db.connect()
+        conexion.row_factory = sql.Row 
+        cursor = conexion.cursor()
+        
+        # We add the "%" wildcards so it matches partial text
+        # E.g., searching "Perez" matches "Juan Perez" or "Perez Gomez"
+        wildcard_term = f"%{search_term}%"
+        
+        # We only fetch the essential data to make the search fast
+        cursor.execute('''
+            SELECT document_id, names, surnames, gender, birthdate 
+            FROM patients 
+            WHERE is_active = 1 AND (document_id LIKE ? OR names LIKE ? OR surnames LIKE ?)
+            ORDER BY names ASC
+            LIMIT 20
+        ''', (wildcard_term, wildcard_term, wildcard_term))
+        
+        results_rows = cursor.fetchall()
+        
+        # Convert the rows to a list of dictionaries
+        patients_list = [dict(row) for row in results_rows]
+        
+        conexion.close()
+        
+        return {
+            "status": "success",
+            "results": patients_list
+        }
+        
+    except Exception as e:
+        return {"status": "fatal", "msg": f"Server error during search: {str(e)}"}
+    
+@eel.expose
+def archive_patient(document_id):
+    """
+    Performs a 'Soft Delete' on a patient. 
+    It doesn't erase the data, just marks it as inactive (archived) for legal compliance.
+    """
+    print(f"Archiving (Soft Deleting) patient: {document_id}")
+    
+    try:
+        conexion = db.connect()
+        cursor = conexion.cursor()
+        
+        # We UPDATE instead of DELETE. 
+        cursor.execute('''
+            UPDATE patients 
+            SET is_active = 0 
+            WHERE document_id = ?
+        ''', (document_id,))
+        
+        # We verify if a row was actually changed
+        if cursor.rowcount == 0:
+            conexion.close()
+            return {"status": "error", "msg": "Patient not found."}
+            
+        conexion.commit()
+        conexion.close()
+        
+        return {
+            "status": "success", 
+            "msg": "Patient successfully archived. Their medical history is preserved but hidden."
+        }
+        
+    except Exception as e:
+        return {"status": "fatal", "msg": f"Server error archiving patient: {str(e)}"}
 # eel.start('index.html', size=(1024, 768))
