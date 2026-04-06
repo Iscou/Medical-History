@@ -35,10 +35,20 @@
 #interfaceMainContainer{
     background-color: blue;
     padding: 15vh;
+    display:flex;
+    flex:1;
+    align-items: center;
+    justify-content: center;
 }
 #interfaceContainer{
     background-color: white;
-  width: 180vh;
+  width: 60vh;
   height: 70vh;
-    
+    padding: 15px;
+}
+#interfaceInputs{
+    display:flex;
+    flex-direction: column;
+    gap: 30px;
+    padding: 40px;
 }
