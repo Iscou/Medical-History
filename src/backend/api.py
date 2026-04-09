@@ -3,6 +3,7 @@ import sqlite3 as sql
 import database as db # We import the database.py to use it 
 import json
 from datetime import datetime
+import security
 
 # We initialize the folder of the frontend
 # eel.init('src/frontend')
@@ -21,8 +22,11 @@ def sign_in_doctor(user, password):
         conexion = db.connect()
         cursor = conexion.cursor()
 
+        # We hashe the key
+        safe_hashed_password = security.hash_password(password)
+
         # Data insertion
-        cursor.execute("INSERT INTO doctors (user, password) VALUES (?,?)", (user, password))
+        cursor.execute("INSERT INTO doctors (user, password) VALUES (?,?)", (user, safe_hashed_password))
 
         # We seal the insertion
         conexion.commit()
@@ -62,23 +66,31 @@ def verify_doctor_login (user, password):
         cursor = conexion.cursor()
 
         # We fetch the medic
-        cursor.execute("SELECT * FROM doctors WHERE user = ? AND password = ?", (user, password))
+        cursor.execute("SELECT * FROM doctors WHERE user = ? ", (user,))
         doctor = cursor.fetchone()
         conexion.close()
 
 
         if doctor: 
-            # doctor[0] is the autoincremental id of the db
-            return {
-                "status" : "success",
-                "msg": " Successfully login",
-                "doctor_id" : doctor[0]
-            }
-        else:
+            doctor_id = doctor[0]
+            hashed_password_db = doctor[1]
+
+            if security.verify_password(password, hashed_password_db):
+                return {
+                    "status" : "success",
+                    "msg": " Successfully login",
+                    "doctor_id" : doctor[0]
+                }
+            else:
+                return{
+                    "status":"error",
+                    "msg": "Invalid user or password "
+                }
+        else: 
             return{
-                "status":"error",
-                "msg": "Invalid user or password "
-            }
+                    "status":"error",
+                    "msg": "Invalid user or password "
+                }
     except Exception as e:
         # If something is not working as it should, then we notify the frontend without the program closing
         return {
