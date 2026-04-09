@@ -40,8 +40,8 @@ def create_tables ():
                 blood_type IN ('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-')
             ),
             occupation TEXT NOT NULL,
-            marital_status TEXT NOT NULL,
-            
+            marital_status TEXT NOT NULL,         
+
             ------------ Medical interview -------------
             
             -------- personal background --------
@@ -63,7 +63,7 @@ def create_tables ():
                 -- How is it passed?: From the API (Python), you retrieve a dictionary and use `json.dumps(dictionary)`.
                 -- How is it stored?: It is saved as a single line of plain text (String).
                 -- Example of 1-line formatting:
-                -- '{"chronic_diseases": "None", "surgeries": "Appendectomy 2015", "allergies": {"drugs": "Penicillin", "food": "None"}, "vaccines": "COVID-19, Tetanus", "toxic_habits": {"tobacco": "No", "alcohol": "Social, "illicit_drugs": "No"}, "daily_medication": "None", "physiological_habits": {"dream":" 6 hours", "coffee_consuumption":"Regular", "sexual":"None" }'              
+                -- '{"chronic_diseases": "None", "surgeries": "Appendectomy 2015", "allergies": {"drugs": "Penicillin", "food": "None"}, "vaccines": "COVID-19, Tetanus", "toxic_habits": {"tobacco": "No", "alcohol": "Social, "illicit_drugs": "No"}, "daily_medication": "None", "physiological_habits": {"dream":" 6 hours", "coffee_consuumption":"Regular", "sexual":"None" } }              
 
             -------- Gynecological and Obstetric Background (AGO) ------------
                 -- Stores: Menarche, LMP, menstrual rhythm, pregnancies, deliveries, cesarean sections, abortions, menopause
@@ -72,6 +72,7 @@ def create_tables ():
                 -- '{"menarche_age": 12, "last_menstruation_date": "2026-03-15", "cycle": "28/5", "pregnancies": 2, "births": 1, "c_sections": 1, "abortions": 0, "menopause_age": null, "contraceptive": "IUD"}'   
 
             gynecological_background TEXT,
+
                       
             --------------- family history. ------------------
                    
@@ -81,11 +82,8 @@ def create_tables ():
                 -- Example of a 1-line format:
                 -- '{"diabetes": "Father", "hypertension": "Paternal grandfather", "cancer": "None", "others": "None"}'
                 
-            family_background TEXT,
-                   
-
-            ------------- Soft Delete -------------
-            is_active INTEGER DEFAULT 1                           
+            family_background TEXT
+                            
         )
     ''')
 
