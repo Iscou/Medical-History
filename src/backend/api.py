@@ -73,13 +73,13 @@ def verify_doctor_login (user, password):
 
         if doctor: 
             doctor_id = doctor[0]
-            hashed_password_db = doctor[1]
+            hashed_password_db = doctor[2]
 
             if security.verify_password(password, hashed_password_db):
                 return {
                     "status" : "success",
                     "msg": " Successfully login",
-                    "doctor_id" : doctor[0]
+                    "doctor_id" : doctor_id
                 }
             else:
                 return{

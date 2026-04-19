@@ -1,9 +1,20 @@
 import sqlite3 as sql
 import json
 
-def connect ():
-    # This function allows the access to the db
-    return sql.connect("medic_system.db")
+import os
+
+# --- DYNAMIC DATABASE PATH ---
+#  Get the directory of this script (src/backend)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+#  Point to the database file in the root folder (medical_history.db)
+# We go up two levels: backend -> src -> project_root
+DB_PATH = os.path.normpath(os.path.join(BASE_DIR, "..", "..", "medical_history.db"))
+
+def connect():
+    """Establishes a connection to the SQLite database using an absolute path"""
+    return sql.connect(DB_PATH)
+
 
 def create_tables ():
 
@@ -25,7 +36,7 @@ def create_tables ():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS patients (
                    
-            --------------- Personal information ---------------
+            -- ------------- Personal information ---------------
                    
             document_id TEXT PRIMARY KEY,
             names TEXT NOT NULL,
@@ -42,9 +53,9 @@ def create_tables ():
             occupation TEXT NOT NULL,
             marital_status TEXT NOT NULL,
             
-            ------------ Medical interview -------------
+            -- ---------- Medical interview -------------
             
-            -------- personal background --------
+            -- ------ personal background --------
                    
             cardiovascular TEXT,
             respiratory TEXT,
@@ -59,13 +70,13 @@ def create_tables ():
                                       
             personal_background TEXT,
 
-            ----------- personal_background stores: Chronic diseases, surgeries, allergies, vaccines, habits, and medications -------------------
+            -- --------- personal_background stores: Chronic diseases, surgeries, allergies, vaccines, habits, and medications -------------------
                 -- How is it passed?: From the API (Python), you retrieve a dictionary and use `json.dumps(dictionary)`.
                 -- How is it stored?: It is saved as a single line of plain text (String).
                 -- Example of 1-line formatting:
                 -- '{"chronic_diseases": "None", "surgeries": "Appendectomy 2015", "allergies": {"drugs": "Penicillin", "food": "None"}, "vaccines": "COVID-19, Tetanus", "toxic_habits": {"tobacco": "No", "alcohol": "Social, "illicit_drugs": "No"}, "daily_medication": "None", "physiological_habits": {"dream":" 6 hours", "coffee_consuumption":"Regular", "sexual":"None" }'              
 
-            -------- Gynecological and Obstetric Background (AGO) ------------
+            -- ------ Gynecological and Obstetric Background (AGO) ------------
                 -- Stores: Menarche, LMP, menstrual rhythm, pregnancies, deliveries, cesarean sections, abortions, menopause
                 -- How is it handled? If gender == "male", then this value could be NULL or "{}"  
                 -- Example if gender == "female":
@@ -73,7 +84,7 @@ def create_tables ():
 
             gynecological_background TEXT,
                       
-            --------------- family history. ------------------
+            -- ------------- family history. ------------------
                    
                 -- Stores: Hereditary or risk diseases (diabetes, hypertension).
                 -- How is it passed?: The same way, you use json.dumps(python_dictionary).
@@ -84,7 +95,7 @@ def create_tables ():
             family_background TEXT,
                    
 
-            ------------- Soft Delete -------------
+            -- ----------- Soft Delete -------------
             is_active INTEGER DEFAULT 1                           
         )
     ''')
