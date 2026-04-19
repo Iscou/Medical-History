@@ -29,17 +29,40 @@ function isEmailValid(email, errorElementId) {
     return true;
 }
 
-// Evento de Login
+// Login Event
 document.getElementById('form-login').addEventListener('submit', function(e) {
     e.preventDefault(); // Prevent the page from reloading
     
     const email = document.getElementById('login-email').value;
     const password = document.getElementById('login-password').value;
 
-    // Only if the regex succeeds, do we simulate sending to the database
     if (isEmailValid(email, 'error-login-email')) {
-        console.log("Datos listos para la API (Login):", { email, password });
-        alert("Validación de correo exitosa. Listo para enviar al backend.");
+        
+        // We pack the data according to the Pydantic model (LoginData)
+        const payload = {
+            email: email,
+            password: password
+        };
+
+        // We shoot the request to the FastAPI backend
+        fetch('/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "success") {
+                alert("¡Acceso concedido! " + data.msg);
+                // Here you will redirect the doctor to the main dashboard later
+                // window.location.href = "dashboard.html";
+            } else {
+                alert("Error: " + data.msg); // Shows "Invalid user or password"
+            }
+        })
+        .catch(error => console.error('Network error:', error));
     }
 });
 
@@ -51,9 +74,34 @@ document.getElementById('form-register').addEventListener('submit', function(e) 
     const email = document.getElementById('reg-email').value;
     const password = document.getElementById('reg-password').value;
 
-    // Only if the regex succeeds, do we simulate sending to the database
     if (isEmailValid(email, 'error-reg-email')) {
-        console.log("Datos listos para la API (Registro):", { name, email, password });
-        alert("Validación de correo exitosa. Listo para guardar el médico.");
+        
+        // We pack the data according to the Pydantic model (RegisterData)
+        const payload = {
+            name: name,
+            email: email,
+            password: password
+        };
+
+        // We shoot the request to the FastAPI backend
+        fetch('/sign_up', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "success") {
+                alert(data.msg); // "Doctor registrado exitosamente"
+                // Clear the form and send them back to the login view
+                document.getElementById('form-register').reset();
+                toggleAuthView('login');
+            } else {
+                alert("Error al registrar: " + data.msg); // E.g., email already exists
+            }
+        })
+        .catch(error => console.error('Network error:', error));
     }
 });
