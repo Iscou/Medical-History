@@ -41,13 +41,7 @@ class RegisterData(BaseModel):
     password: str
 
 # --- ENDPOINTS (API) ---
-@app.post("/login")
-def process_login(data: LoginData):
-    return api.verify_doctor_login(data.email, data.password)
-
-@app.post("/sign_up")
-def process_signup(data: RegisterData):
-    return api.sign_in_doctor(data.email, data.password)
+app.include_router(api.api_router)
 
 # --- DYNAMIC PATHS (CORRECTED) ---
 # BASE_DIR is .../src/backend
@@ -67,7 +61,7 @@ def start_server():
     uvicorn.run(app, host="127.0.0.1", port=8000, log_level="warning")
 
 if __name__ == "__main__":
-    # 0. Ensure the database and tables exist before anything else
+    # Ensure the database and tables exist before anything else
     try:
         database.create_tables()
     except Exception as e:
@@ -87,7 +81,8 @@ if __name__ == "__main__":
         url="http://127.0.0.1:8000",
         width=1024, 
         height=768,
-        resizable=False 
+        # NEW: Allows the user to stretch, maximize and resize the window
+        resizable=True 
     )
     
     # Start the GUI loop
