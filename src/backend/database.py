@@ -1,9 +1,25 @@
 import sqlite3 as sql
-import json
+import os
 
-def connect ():
-    # This function allows the access to the db
-    return sql.connect("medic_system.db")
+# --- DYNAMIC DATABASE PATH (CORRECTED FOR RELIABILITY) ---
+# We get the directory of this script (src/backend)
+# This ensures we always find the DB file relative to this script location.
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Point to the database file in the root folder (medic_system.db)
+# We go up two levels: backend -> src -> project_root
+DB_NAME = "medic_system.db" 
+DB_PATH = os.path.normpath(os.path.join(BASE_DIR, "..", "..", DB_NAME))
+
+def connect():
+    # Preserved standard comment
+    """Establishes a connection to the SQLite database using an absolute path"""
+    # Using the calculated absolute DB_PATH ensures accuracy.
+    conn = sql.connect(DB_PATH)
+    # Enforce foreign key constraints for data integrity
+    conn.execute("PRAGMA foreign_keys = ON;")
+    return conn
+
 
 def create_tables ():
 
@@ -14,9 +30,10 @@ def create_tables ():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS doctors (
             id INTEGER PRIMARY KEY AUTOINCREMENT, 
+            name TEXT NOT NULL, -- NEW: Added name field to display in UI
             user TEXT UNIQUE NOT NULL, 
             password TEXT NOT NULL    
-        )         
+        )          
     ''')
     
     # Patients table (Here we store all the essential information about the patient )
@@ -24,9 +41,9 @@ def create_tables ():
     # The relation between doctor and patient  is 1 to N
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS patients (
-                   
-            --------------- Personal information ---------------
-                   
+                    
+            -- --------------- Personal information ---------------
+                    
             document_id TEXT PRIMARY KEY,
             names TEXT NOT NULL,
             surnames TEXT NOT NULL, 
@@ -42,10 +59,10 @@ def create_tables ():
             occupation TEXT NOT NULL,
             marital_status TEXT NOT NULL,
             
-            ------------ Medical interview -------------
+            -- ---------- Medical interview -------------
             
-            -------- personal background --------
-                   
+            -- ------ personal background --------
+                    
             cardiovascular TEXT,
             respiratory TEXT,
             gastrointestinal TEXT,
@@ -59,13 +76,13 @@ def create_tables ():
                                       
             personal_background TEXT,
 
-            ----------- personal_background stores: Chronic diseases, surgeries, allergies, vaccines, habits, and medications -------------------
+            -- --------- personal_background stores: Chronic diseases, surgeries, allergies, vaccines, habits, and medications -------------------
                 -- How is it passed?: From the API (Python), you retrieve a dictionary and use `json.dumps(dictionary)`.
                 -- How is it stored?: It is saved as a single line of plain text (String).
                 -- Example of 1-line formatting:
                 -- '{"chronic_diseases": "None", "surgeries": "Appendectomy 2015", "allergies": {"drugs": "Penicillin", "food": "None"}, "vaccines": "COVID-19, Tetanus", "toxic_habits": {"tobacco": "No", "alcohol": "Social, "illicit_drugs": "No"}, "daily_medication": "None", "physiological_habits": {"dream":" 6 hours", "coffee_consuumption":"Regular", "sexual":"None" }'              
 
-            -------- Gynecological and Obstetric Background (AGO) ------------
+            -- ------ Gynecological and Obstetric Background (AGO) ------------
                 -- Stores: Menarche, LMP, menstrual rhythm, pregnancies, deliveries, cesarean sections, abortions, menopause
                 -- How is it handled? If gender == "male", then this value could be NULL or "{}"  
                 -- Example if gender == "female":
@@ -73,8 +90,8 @@ def create_tables ():
 
             gynecological_background TEXT,
                       
-            --------------- family history. ------------------
-                   
+            -- ------------- family history. ------------------
+                    
                 -- Stores: Hereditary or risk diseases (diabetes, hypertension).
                 -- How is it passed?: The same way, you use json.dumps(python_dictionary).
                 -- How is it stored?: As plain text.
@@ -82,10 +99,10 @@ def create_tables ():
                 -- '{"diabetes": "Father", "hypertension": "Paternal grandfather", "cancer": "None", "others": "None"}'
                 
             family_background TEXT,
-                   
+                    
 
-            ------------- Soft Delete -------------
-            is_active INTEGER DEFAULT 1                           
+            -- ----------- Soft Delete -------------
+            is_active INTEGER DEFAULT 1                            
         )
     ''')
 
@@ -104,7 +121,7 @@ def create_tables ():
            weight REAL,              
            height REAL,                               
            blood_pressure TEXT,      
-           heart_rate INTEGER,       
+           heart_rate INTEGER,        
            respiratory_rate INTEGER, 
            temperature REAL,         
 
@@ -143,6 +160,3 @@ def create_tables ():
 # This allows execute the function "create_tables()" if the main is executed
 if __name__ == "__main__":
     create_tables()
-
-
-    

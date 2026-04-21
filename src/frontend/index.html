@@ -1,1 +1,300 @@
-!
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal MediHistorial</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <div id="auth-screen">
+        <div class="auth-container">
+            <div class="auth-header">
+                <h2>Sistema Clínico</h2>
+                <p id="auth-subtitle">Bienvenido doctor, por favor inicie sesión</p>
+            </div>
+
+            <form id="form-login" class="auth-form active">
+                <div class="input-group">
+                    <label>Correo Electrónico</label>
+                    <input type="email" id="login-email" required placeholder="nombre@correo.com">
+                    <span class="error-msg" id="error-login-email" style="color: red; font-size: 12px;"></span>
+                </div>
+                <div class="input-group">
+                    <label>Contraseña</label>
+                    <input type="password" id="login-password" required placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn-primary">Iniciar Sesión</button>
+                <p class="toggle-text">¿No tiene una cuenta? <span onclick="toggleAuthView('register')">Regístrese</span></p>
+            </form>
+
+            <form id="form-register" class="auth-form">
+                <div class="input-group">
+                    <label>Nombre Completo</label>
+                    <input type="text" id="reg-name" required placeholder="Ej. Dr. Francisco Zerpa">
+                </div>
+                <div class="input-group">
+                    <label>Correo Electrónico</label>
+                    <input type="email" id="reg-email" required placeholder="nombre@correo.com">
+                    <span class="error-msg" id="error-reg-email" style="color: red; font-size: 12px;"></span>
+                </div>
+                <div class="input-group">
+                    <label>Contraseña</label>
+                    <input type="password" id="reg-password" required placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn-primary">Registrar Cuenta</button>
+                <p class="toggle-text">¿Ya tiene una cuenta? <span onclick="toggleAuthView('login')">Iniciar Sesión</span></p>
+            </form>
+        </div>
+    </div>
+
+    <div id="dashboard-screen" class="hidden">
+        <aside class="sidebar">
+            <div class="sidebar-logo">M</div>
+            <nav class="nav-menu">
+                <ul>
+                    <li class="nav-item active" id="nav-summary" onclick="switchView('summary')">Resumen</li>
+                    <li class="nav-item" id="nav-patients" onclick="switchView('patients')">Pacientes</li>
+                    <li class="nav-item" id="nav-settings" onclick="switchView('settings')">Configuración</li>
+                </ul>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <div class="doc-profile">
+                    <span id="topbar-doc-name">Dr. Médico</span>
+                    <span onclick="handleLogout()" style="cursor: pointer; color: var(--text-color); margin-left: 20px;">Cerrar Sesión</span>
+                </div>
+            </header>
+
+            <section class="content-body">
+                
+                <div id="view-summary" class="content-view">
+                    <h3 id="welcome-message">Bienvenido Doctor</h3>
+                    
+                    <div style="margin-top: 20px; background: white; padding: 20px; border-radius: 8px;">
+                        <h5 style="color: var(--primary-color); margin-bottom: 15px;">Últimos Pacientes Registrados</h5>
+                        <div class="patients-list-table">
+                            <table class="patient-table">
+                                <thead>
+                                    <tr>
+                                        <th>Cédula (ID)</th>
+                                        <th>Nombres</th>
+                                        <th>Apellidos</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recent-patients-body">
+                                    </tbody>
+                            </table>
+                            <div id="empty-recent-msg" class="empty-list-msg hidden">
+                                No hay pacientes recientes.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-patients" class="content-view hidden">
+                    <h3>Gestión de Pacientes</h3>
+                    <div class="patients-action-bar">
+                        <div class="search-box">
+                            <input type="text" id="patient-search-input" placeholder="Buscar por nombre o cédula..." onkeyup="filterPatientsTable()" disabled>
+                        </div>
+                        <button class="btn-success" onclick="switchView('create-history')">+ Nueva Historia</button>
+                    </div>
+                    <div class="patients-list-table">
+                        <table id="patients-table" class="patient-table hidden">
+                            <thead>
+                                <tr>
+                                    <th>Cédula (ID)</th>
+                                    <th>Nombres</th>
+                                    <th>Apellidos</th>
+                                </tr>
+                            </thead>
+                            <tbody id="patients-table-body"></tbody>
+                        </table>
+                        <div id="empty-patients-msg" class="empty-list-msg">
+                            No se encontraron historias médicas. Cree una nueva para comenzar.
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-create-history" class="content-view hidden">
+                    <form id="form-create-patient" onsubmit="handleCreatePatient(event)">
+                        <h3>Crear Historia Médica y Consulta Inicial</h3>
+                        
+                        <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                            <h5>Información Personal</h5>
+                            <div class="input-grid">
+                                <input type="text" id="cp-pat-cedula" placeholder="Cédula (ID)" required>
+                                <input type="date" id="cp-pat-birthdate" required>
+                                <input type="text" id="cp-pat-names" placeholder="Nombres" required>
+                                <input type="text" id="cp-pat-surnames" placeholder="Apellidos" required>
+                                <select id="cp-pat-gender" required>
+                                    <option value="" disabled selected>Género</option>
+                                    <option value="male">Masculino</option>
+                                    <option value="female">Femenino</option>
+                                </select>
+                                <input type="text" id="cp-pat-marital" placeholder="Estado Civil" required>
+                            </div>
+                            <h5>Antecedentes Médicos</h5>
+                            <div class="input-grid">
+                                <input type="text" id="cp-back-allergic" placeholder="Alergias (Ej. Penicilina)">
+                                <input type="text" id="cp-back-cardio" placeholder="Cardiovascular (Ej. Hipertensión)">
+                                <input type="text" id="cp-back-personal" placeholder="Cirugías, hábitos tóxicos...">
+                            </div>
+                        </div>
+
+                        <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                            <h5>Consulta Inicial</h5>
+                            <div class="input-grid-query">
+                                <input type="text" id="cp-query-motive" placeholder="Motivo de Consulta" required>
+                                <input type="text" id="cp-query-diagnostic" placeholder="Diagnóstico Inicial" required>
+                                <textarea id="cp-query-illness" placeholder="Enfermedad actual" required rows="2"></textarea>
+                            </div>
+                        </div>
+
+                        <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                            <h5>Signos Vitales y Antropometría</h5>
+                            <div class="input-grid">
+                                <input type="number" id="cp-weight" step="0.1" placeholder="Peso (kg)">
+                                <input type="number" id="cp-height" step="0.01" placeholder="Talla (m)">
+                                <input type="number" id="cp-temp" step="0.1" placeholder="Temperatura (°C)">
+                                <input type="text" id="cp-bp" placeholder="Presión Arterial (Ej. 120/80)">
+                                <input type="number" id="cp-hr" placeholder="Frecuencia Cardíaca (lpm)">
+                                <input type="number" id="cp-rr" placeholder="Frecuencia Respiratoria (rpm)">
+                            </div>
+                        </div>
+
+                        <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                            <h5>Examen Físico Descriptivo</h5>
+                            <div class="input-grid">
+                                <input type="text" id="cp-phys-general" placeholder="Impresión General (Ej. Paciente estable)">
+                                <input type="text" id="cp-phys-head" placeholder="Cabeza y Cuello (Ej. Normocéfalo)">
+                                <input type="text" id="cp-phys-chest" placeholder="Cardiorrespiratorio">
+                                <input type="text" id="cp-phys-abdomen" placeholder="Abdomen (Ej. Blando, depresible)">
+                            </div>
+                        </div>
+
+                        <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                            <h5>Adjuntar Exámenes Iniciales (Opcional)</h5>
+                            <div class="input-grid">
+                                <input type="file" id="cp-file" accept=".pdf, .jpg, .png, .jpeg" multiple style="padding: 7px; grid-column: span 2;">
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                            <button type="button" class="btn-primary" style="background: #bdc3c7;" onclick="switchView('patients')">Cancelar</button>
+                            <button type="submit" class="btn-success">Guardar Historia Completa</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="view-patient-details" class="content-view hidden">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h3 id="details-patient-name">Detalles del Paciente</h3>
+                        <button class="btn-primary" style="background: #bdc3c7;" onclick="switchView('patients')">Volver a la lista</button>
+                    </div>
+                    
+                    <div style="display: flex; gap: 20px; margin-top: 20px;">
+                        <div style="flex: 1; background: white; padding: 20px; border-radius: 8px; height: fit-content;">
+                            <h5 style="color: var(--primary-color);">Datos Básicos</h5>
+                            <p id="details-cedula"><strong>Cédula:</strong> </p>
+                            <p id="details-birthdate"><strong>Nacimiento:</strong> </p>
+                            <p id="details-gender"><strong>Género:</strong> </p>
+                            <hr style="margin: 10px 0; border: 0.5px solid #eee;">
+                            <h5 style="color: var(--primary-color);">Antecedentes</h5>
+                            <p id="details-allergies" style="font-size: 14px; color: #555;">Alergias: </p>
+                        </div>
+                        
+                        <div style="flex: 2; background: white; padding: 20px; border-radius: 8px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                                <h5 style="color: var(--primary-color);">Historial de Consultas</h5>
+                                <button class="btn-success" style="font-size: 12px; padding: 8px 15px;" onclick="switchView('add-query')">+ Agregar Consulta Evolutiva</button>
+                            </div>
+                            <div id="details-queries-timeline" style="display: flex; flex-direction: column; gap: 15px;">
+                                </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-add-query" class="content-view hidden">
+                    <form id="form-add-query" onsubmit="handleAddEvolutionaryQuery(event)">
+                        <h3>Nueva Consulta Evolutiva</h3>
+                        <p style="color: #7f8c8d; margin-bottom: 20px;">Paciente: <span id="eq-patient-name-label" style="font-weight: bold;"></span></p>
+
+                        <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                            <h5>Datos de la Consulta</h5>
+                            <div class="input-grid-query">
+                                <input type="text" id="eq-motive" placeholder="Motivo de Consulta" required>
+                                <input type="text" id="eq-diagnostic" placeholder="Diagnóstico" required>
+                                <textarea id="eq-illness" placeholder="Enfermedad actual / Síntomas" required rows="2"></textarea>
+                                <textarea id="eq-treatment" placeholder="Tratamiento / Indicaciones" rows="2"></textarea>
+                            </div>
+                        </div>
+
+                        <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                            <h5>Signos Vitales y Antropometría</h5>
+                            <div class="input-grid">
+                                <input type="number" id="eq-weight" step="0.1" placeholder="Peso (kg)">
+                                <input type="number" id="eq-height" step="0.01" placeholder="Talla (m)">
+                                <input type="number" id="eq-temp" step="0.1" placeholder="Temperatura (°C)">
+                                <input type="text" id="eq-bp" placeholder="Presión Arterial (Ej. 120/80)">
+                                <input type="number" id="eq-hr" placeholder="Frecuencia Cardíaca (lpm)">
+                                <input type="number" id="eq-rr" placeholder="Frecuencia Respiratoria (rpm)">
+                            </div>
+                        </div>
+
+                        <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                            <h5>Examen Físico Descriptivo</h5>
+                            <div class="input-grid">
+                                <input type="text" id="eq-phys-general" placeholder="Impresión General (Ej. Paciente estable)">
+                                <input type="text" id="eq-phys-head" placeholder="Cabeza y Cuello (Ej. Normocéfalo)">
+                                <input type="text" id="eq-phys-chest" placeholder="Cardiorrespiratorio">
+                                <input type="text" id="eq-phys-abdomen" placeholder="Abdomen (Ej. Blando, depresible)">
+                            </div>
+                        </div>
+
+                        <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                            <h5>Adjuntar Exámenes (Opcional)</h5>
+                            <div class="input-grid">
+                                <input type="file" id="eq-file" accept=".pdf, .jpg, .png, .jpeg" multiple style="padding: 7px; grid-column: span 2;">
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                            <button type="button" class="btn-primary" style="background: #bdc3c7;" onclick="switchView('patient-details')">Cancelar</button>
+                            <button type="submit" class="btn-success">Guardar Consulta y Archivos</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="view-settings" class="content-view hidden">
+                    <h3>Configuración de Cuenta</h3>
+                    <div style="background: white; padding: 20px; border-radius: 8px; width: 50%;">
+                        <form id="form-settings" onsubmit="handleSettingsUpdate(event)">
+                            <div class="input-group" style="margin-bottom: 15px;">
+                                <label>Nombre del Médico</label>
+                                <input type="text" id="set-name" required>
+                            </div>
+                            <div class="input-group" style="margin-bottom: 15px;">
+                                <label>Correo Electrónico</label>
+                                <input type="email" id="set-email" required>
+                            </div>
+                            <div class="input-group" style="margin-bottom: 20px;">
+                                <label>Nueva Contraseña (Opcional)</label>
+                                <input type="password" id="set-password" placeholder="Dejar en blanco para no cambiar">
+                            </div>
+                            <button type="submit" class="btn-success">Guardar Cambios</button>
+                        </form>
+                    </div>
+                </div>
+
+            </section>
+        </main>
+    </div>
+
+    <script src="js/main.js"></script>
+</body>
+</html>
