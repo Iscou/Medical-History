@@ -4,22 +4,27 @@ import security
 from fastapi import APIRouter, HTTPException, File, Form, UploadFile
 from pydantic import BaseModel
 from typing import Optional, List
+from fastapi.responses import FileResponse
 import json
 import datetime
 import os
+import sys 
 import shutil
 
 # Main router for API endpoints
 api_router = APIRouter()
 
-# --- DIRECTORY FOR ATTACHED EXAMS ---
-# Creates an 'uploads' folder in the root directory if it doesn't exist
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-UPLOAD_DIR = os.path.normpath(os.path.join(BASE_DIR, "..", "..", "uploads"))
+# --- DIRECTORY FOR ATTACHED EXAMS (PYINSTALLER COMPATIBLE) ---
+if getattr(sys, 'frozen', False):
+    BASE_DIR = os.path.dirname(sys.executable)
+    UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    UPLOAD_DIR = os.path.normpath(os.path.join(BASE_DIR, "..", "..", "uploads"))
+
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # --- DATA MODELS (PYDANTIC) ---
-
 class LoginData(BaseModel):
     email: str
     password: str
@@ -29,32 +34,11 @@ class RegisterData(BaseModel):
     email: str
     password: str
 
-# NEW: Model for updating doctor settings
 class UpdateDoctorSchema(BaseModel):
     doctor_id: int
     name: str
     email: str
-    password: Optional[str] = None # Optional, only updated if provided
-
-class PatientCreateSchema(BaseModel):
-    document_id: str 
-    names: str
-    surnames: str
-    gender: str 
-    birthdate: str 
-    occupation: str
-    marital_status: str
-    blood_type: Optional[str] = None
-    emergency_contact_name: Optional[str] = None
-    emergency_contact_phone: Optional[str] = None
-    allergic: Optional[str] = "{}"
-    cardiovascular: Optional[str] = "{}"
-    personal_background: Optional[str] = "{}" 
-    gynecological_background: Optional[str] = "{}"
-    family_background: Optional[str] = "{}"
-    motive: str
-    diagnostic: str
-    current_illness: str
+    password: Optional[str] = None 
 
 class PatientListItem(BaseModel):
     document_id: str
@@ -62,13 +46,11 @@ class PatientListItem(BaseModel):
     surnames: str
 
 # --- INTERNAL FUNCTIONS ---
-
 def verify_doctor_login(email, password):
     """Checks credentials against database"""
     try:
         connection = database.connect()
         cursor = connection.cursor()
-        # UPDATED: We now extract the 'name' column as well
         cursor.execute("SELECT id, user, password, name FROM doctors WHERE user = ?", (email,))
         doctor = cursor.fetchone()
         connection.close()
@@ -90,7 +72,6 @@ def sign_in_doctor(name, email, password):
         connection = database.connect()
         cursor = connection.cursor()
         secure_password = security.hash_password(password)
-        # UPDATED: Inserting the doctor's name
         cursor.execute("INSERT INTO doctors (name, user, password) VALUES (?, ?, ?)", (name, email, secure_password))
         connection.commit()
         connection.close()
@@ -100,13 +81,13 @@ def sign_in_doctor(name, email, password):
     except Exception as e:
         return {"status" : "error", "msg": f"Registration error: {str(e)}"}
 
-def internal_get_all_active_patients():
-    """Retrieves list of active patients for the dashboard table"""
+def internal_get_all_active_patients(doctor_id: int):
+    """Retrieves list of active patients FOR A SPECIFIC DOCTOR"""
     try:
         conn = database.connect()
         cursor = conn.cursor()
-        # ENFORCED SOFT DELETE: is_active = 1
-        cursor.execute("SELECT document_id, names, surnames FROM patients WHERE is_active = 1")
+        # Privacity: Only carry patients of the doctor that log in
+        cursor.execute("SELECT document_id, names, surnames FROM patients WHERE is_active = 1 AND doctor_id = ?", (doctor_id,))
         patients = cursor.fetchall()
         conn.close()
         
@@ -118,7 +99,6 @@ def internal_get_all_active_patients():
         return []
 
 # --- API ROUTER ENDPOINTS ---
-
 @api_router.post("/login")
 def process_login(data: LoginData):
     return verify_doctor_login(data.email, data.password)
@@ -127,21 +107,17 @@ def process_login(data: LoginData):
 def process_signup(data: RegisterData):
     return sign_in_doctor(data.name, data.email, data.password)
 
-# NEW: Endpoint to update doctor settings
 @api_router.post("/doctor/update")
 def update_doctor_settings(data: UpdateDoctorSchema):
-    """Updates doctor's profile. Checks if password update is requested."""
     try:
         conn = database.connect()
         cursor = conn.cursor()
         
         if data.password and data.password.strip():
-            # Update including new hashed password
             sec_pass = security.hash_password(data.password)
             cursor.execute("UPDATE doctors SET name = ?, user = ?, password = ? WHERE id = ?", 
                            (data.name, data.email, sec_pass, data.doctor_id))
         else:
-            # Update only name and email
             cursor.execute("UPDATE doctors SET name = ?, user = ? WHERE id = ?", 
                            (data.name, data.email, data.doctor_id))
             
@@ -153,90 +129,105 @@ def update_doctor_settings(data: UpdateDoctorSchema):
     except Exception as e:
         return {"status": "error", "msg": f"Error updating doctor: {str(e)}"}
 
+# 
+@api_router.get("/patients/all/{doctor_id}", response_model=List[PatientListItem])
+def get_patients_all(doctor_id: int):
+    return internal_get_all_active_patients(doctor_id)
 
-@api_router.get("/patients/all", response_model=List[PatientListItem])
-def get_patients_all():
-    return internal_get_all_active_patients()
-
-# NEW: Endpoint to get the 5 most recent active patients for the Summary view
-@api_router.get("/patients/recent", response_model=List[PatientListItem])
-def get_recent_patients():
+@api_router.get("/patients/recent/{doctor_id}", response_model=List[PatientListItem])
+def get_recent_patients(doctor_id: int):
     try:
         conn = database.connect()
         cursor = conn.cursor()
-        # ENFORCED SOFT DELETE: is_active = 1, ordered by latest insertion
-        cursor.execute("SELECT document_id, names, surnames FROM patients WHERE is_active = 1 ORDER BY rowid DESC LIMIT 5")
+        cursor.execute("SELECT document_id, names, surnames FROM patients WHERE is_active = 1 AND doctor_id = ? ORDER BY rowid DESC LIMIT 5", (doctor_id,))
         patients = cursor.fetchall()
         conn.close()
         return [PatientListItem(document_id=p[0], names=p[1], surnames=p[2]) for p in patients]
     except Exception:
         return []
 
-# --- PATIENT CREATION (UPDATED FOR MULTIPLE FILES & FULL QUERY DATA) ---
+# --- PATIENT CREATION  ---
 @api_router.post("/patient/create")
 async def create_patient_history(
-    # Patient Data
+    doctor_id: int = Form(...),
     document_id: str = Form(...),
+    referred: str = Form("No"),
     names: str = Form(...),
     surnames: str = Form(...),
     gender: str = Form(...),
     birthdate: str = Form(...),
-    occupation: str = Form(""),
     marital_status: str = Form(""),
-    allergic: str = Form("{}"),
-    cardiovascular: str = Form("{}"),
-    personal_background: str = Form("{}"),
-    # Query Data
+    address: str = Form(""),
+    phone: str = Form(""),
+    # background
+    cardiovascular: str = Form(""),
+    pulmonary: str = Form(""),
+    neurological: str = Form(""),
+    urogenital: str = Form(""),
+    eyes: str = Form(""),
+    osteomuscular: str = Form(""),
+    metabolic: str = Form(""),
+    allergic: str = Form(""),
+    surgical: str = Form(""),
+    orl: str = Form(""),
+    habits: str = Form(""),
+    family_background: str = Form(""),
+    # Initial query
     motive: str = Form(...),
-    diagnostic: str = Form(...),
     current_illness: str = Form(...),
+    diagnostic: str = Form(...),
+    treatment: str = Form(""),
     weight: float = Form(0.0),
     height: float = Form(0.0),
     temperature: float = Form(0.0),
     blood_pressure: str = Form(""),
     heart_rate: int = Form(0),
     respiratory_rate: int = Form(0),
-    physical_examination: str = Form("{}"),
-    # Multiple Files Upload
+    physical_examination: str = Form(""),
+    electrocardiogram: str = Form(""),
+    chest_xray: str = Form(""),
+    laboratory: str = Form(""),
+    # Files
     exam_files: Optional[List[UploadFile]] = File(None)
 ):
-    """Handles medical history creation AND their complete initial query with multiple files"""
     try:
         conn = database.connect()
         cursor = conn.cursor()
         
-        # 1. Insert Patient
+        # Insert patient
         query_patient = '''
             INSERT INTO patients (
-                document_id, names, surnames, gender, birthdate, 
-                occupation, marital_status,
-                allergic, cardiovascular, personal_background
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                document_id, doctor_id, referred, names, surnames, gender, birthdate, 
+                marital_status, address, phone,
+                cardiovascular, pulmonary, neurological, urogenital, eyes, 
+                osteomuscular, metabolic, allergic, surgical, orl, habits, family_background
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         '''
         cursor.execute(query_patient, (
-            document_id, names, surnames, gender, birthdate, 
-            occupation, marital_status,
-            allergic, cardiovascular, personal_background
+            document_id, doctor_id, referred, names, surnames, gender, birthdate, 
+            marital_status, address, phone,
+            cardiovascular, pulmonary, neurological, urogenital, eyes, 
+            osteomuscular, metabolic, allergic, surgical, orl, habits, family_background
         ))
 
-        # 2. Insert Initial Query
+        # Insert inital query
         current_date = datetime.date.today().strftime("%Y-%m-%d")
         query_consult = '''
             INSERT INTO queries (
-                patient_document_id, date, motive, current_illness, diagnostic, 
+                patient_document_id, date, motive, current_illness, diagnostic, treatment,
                 weight, height, blood_pressure, heart_rate, respiratory_rate, temperature,
-                physical_examination
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                physical_examination, electrocardiogram, chest_xray, laboratory
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         '''
         cursor.execute(query_consult, (
-            document_id, current_date, motive, current_illness, diagnostic, 
+            document_id, current_date, motive, current_illness, diagnostic, treatment,
             weight, height, blood_pressure, heart_rate, respiratory_rate, temperature,
-            physical_examination
+            physical_examination, electrocardiogram, chest_xray, laboratory
         ))
         
         new_query_id = cursor.lastrowid
         
-        # 3. Handle Multiple Files
+        # File manager
         if exam_files:
             for file in exam_files:
                 if file and file.filename:
@@ -254,17 +245,15 @@ async def create_patient_history(
 
         conn.commit()
         conn.close()
-        return {"status": "success", "msg": "Historia médica y consulta inicial creadas exitosamente."}
+        return {"status": "success", "msg": "Historia médica creada exitosamente."}
         
     except sqlite3.IntegrityError:
         return {"status": "error", "msg": "La cédula de este paciente ya existe en el sistema."}
     except Exception as e:
         return {"status": "error", "msg": f"Error en la base de datos: {str(e)}"}
 
-# --- PATIENT FULL DETAILS ENDPOINT ---
 @api_router.get("/patient/details/{document_id}")
 def get_patient_details(document_id: str):
-    """Fetches patient info, all their queries, and attached exams"""
     try:
         conn = database.connect()
         conn.row_factory = sqlite3.Row 
@@ -296,7 +285,7 @@ def get_patient_details(document_id: str):
     except Exception as e:
         return {"status": "error", "msg": str(e)}
 
-# --- EVOLUTIONARY QUERY & FILE UPLOAD (UPDATED FOR MULTIPLE FILES) ---
+# --- EVOLUTIONARY QUERY & FILE UPLOAD ---
 @api_router.post("/query/create")
 async def add_evolutionary_query(
     patient_document_id: str = Form(...),
@@ -310,11 +299,12 @@ async def add_evolutionary_query(
     blood_pressure: str = Form(""),
     heart_rate: int = Form(0),
     respiratory_rate: int = Form(0),
-    physical_examination: str = Form("{}"),
-    # Multiple Files Support
+    physical_examination: str = Form(""),
+    electrocardiogram: str = Form(""),
+    chest_xray: str = Form(""),
+    laboratory: str = Form(""),
     exam_files: Optional[List[UploadFile]] = File(None) 
 ):
-    """Handles adding evolutionary queries with multiple optional file attachments"""
     try:
         conn = database.connect()
         cursor = conn.cursor()
@@ -325,18 +315,17 @@ async def add_evolutionary_query(
             INSERT INTO queries (
                 patient_document_id, date, motive, current_illness,
                 weight, height, blood_pressure, heart_rate, respiratory_rate, temperature,
-                physical_examination, diagnostic, treatment
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                physical_examination, electrocardiogram, chest_xray, laboratory, diagnostic, treatment
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         '''
         cursor.execute(query_sql, (
             patient_document_id, current_date, motive, current_illness,
             weight, height, blood_pressure, heart_rate, respiratory_rate, temperature,
-            physical_examination, diagnostic, treatment
+            physical_examination, electrocardiogram, chest_xray, laboratory, diagnostic, treatment
         ))
         
         new_query_id = cursor.lastrowid
         
-        # Handle Multiple File Uploads
         if exam_files:
             for file in exam_files:
                 if file and file.filename:
@@ -358,3 +347,19 @@ async def add_evolutionary_query(
         
     except sqlite3.Error as e:
         return {"status": "error", "msg": f"Database error creating query: {str(e)}"}
+    
+# --- Download of adjunted files ---
+@api_router.get("/exam/download/{exam_id}")
+def download_exam(exam_id: int):
+    try:
+        conn = database.connect()
+        cursor = conn.cursor()
+        cursor.execute("SELECT file_path, exam_name FROM attached_exams WHERE id = ?", (exam_id,))
+        exam = cursor.fetchone()
+        conn.close()
+
+        if exam and os.path.exists(exam[0]):
+            return FileResponse(path=exam[0], filename=exam[1])
+        return {"status": "error", "msg": "El archivo no existe en el disco."}
+    except Exception as e:
+        return {"status": "error", "msg": str(e)}

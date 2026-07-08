@@ -1,140 +1,87 @@
 import sqlite3 as sql
 import os
+import sys
 
-# --- DYNAMIC DATABASE PATH (CORRECTED FOR RELIABILITY) ---
-# We get the directory of this script (src/backend)
-# This ensures we always find the DB file relative to this script location.
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-# Point to the database file in the root folder (medic_system.db)
-# We go up two levels: backend -> src -> project_root
-DB_NAME = "medic_system.db" 
-DB_PATH = os.path.normpath(os.path.join(BASE_DIR, "..", "..", DB_NAME))
+if getattr(sys, 'frozen', False):
+    BASE_DIR = os.path.dirname(sys.executable)
+    DB_PATH = os.path.join(BASE_DIR, "medic_system.db")
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    DB_PATH = os.path.normpath(os.path.join(BASE_DIR, "..", "..", "medic_system.db"))
 
 def connect():
-    # Preserved standard comment
-    """Establishes a connection to the SQLite database using an absolute path"""
-    # Using the calculated absolute DB_PATH ensures accuracy.
     conn = sql.connect(DB_PATH)
-    # Enforce foreign key constraints for data integrity
     conn.execute("PRAGMA foreign_keys = ON;")
     return conn
 
-
-def create_tables ():
-
+def create_tables():
     conexion = connect()
     cursor = conexion.cursor()
 
-    # Medic table (for the local login)
+    # DOCTORS
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS doctors (
             id INTEGER PRIMARY KEY AUTOINCREMENT, 
-            name TEXT NOT NULL, -- NEW: Added name field to display in UI
+            name TEXT NOT NULL, 
             user TEXT UNIQUE NOT NULL, 
-            password TEXT NOT NULL    
+            password TEXT NOT NULL,
+            signature_path TEXT 
         )          
     ''')
     
-    # Patients table (Here we store all the essential information about the patient )
-    # Here is the information base of the patient
-    # The relation between doctor and patient  is 1 to N
+    # PATIENTS
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS patients (
-                    
-            -- --------------- Personal information ---------------
-                    
             document_id TEXT PRIMARY KEY,
+            doctor_id INTEGER NOT NULL,
+            referred TEXT,
             names TEXT NOT NULL,
             surnames TEXT NOT NULL, 
-            gender TEXT CHECK (
-                gender IN ("male", "female")
-            ),
+            gender TEXT CHECK (gender IN ("male", "female")),
             birthdate TEXT NOT NULL,
-            emergency_contact_name TEXT,
-            emergency_contact_phone TEXT,
-            blood_type TEXT CHECK (
-                blood_type IN ('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-')
-            ),
-            occupation TEXT NOT NULL,
-            marital_status TEXT NOT NULL,
+            marital_status TEXT,
+            address TEXT,
+            phone TEXT,
             
-            -- ---------- Medical interview -------------
-            
-            -- ------ personal background --------
-                    
+            -- Interrogatorio y Antecedentes
             cardiovascular TEXT,
-            respiratory TEXT,
-            gastrointestinal TEXT,
-            nephrourological TEXT,
+            pulmonary TEXT,
             neurological TEXT,
-            infectious_diseases TEXT,
-            endocrinological TEXT,
-            traumatological TEXT,
+            urogenital TEXT,
+            eyes TEXT,
+            osteomuscular TEXT,
+            metabolic TEXT,
             allergic TEXT,
-
-                                      
-            personal_background TEXT,
-
-            -- --------- personal_background stores: Chronic diseases, surgeries, allergies, vaccines, habits, and medications -------------------
-                -- How is it passed?: From the API (Python), you retrieve a dictionary and use `json.dumps(dictionary)`.
-                -- How is it stored?: It is saved as a single line of plain text (String).
-                -- Example of 1-line formatting:
-                -- '{"chronic_diseases": "None", "surgeries": "Appendectomy 2015", "allergies": {"drugs": "Penicillin", "food": "None"}, "vaccines": "COVID-19, Tetanus", "toxic_habits": {"tobacco": "No", "alcohol": "Social, "illicit_drugs": "No"}, "daily_medication": "None", "physiological_habits": {"dream":" 6 hours", "coffee_consuumption":"Regular", "sexual":"None" }'              
-
-            -- ------ Gynecological and Obstetric Background (AGO) ------------
-                -- Stores: Menarche, LMP, menstrual rhythm, pregnancies, deliveries, cesarean sections, abortions, menopause
-                -- How is it handled? If gender == "male", then this value could be NULL or "{}"  
-                -- Example if gender == "female":
-                -- '{"menarche_age": 12, "last_menstruation_date": "2026-03-15", "cycle": "28/5", "pregnancies": 2, "births": 1, "c_sections": 1, "abortions": 0, "menopause_age": null, "contraceptive": "IUD"}'   
-
-            gynecological_background TEXT,
-                      
-            -- ------------- family history. ------------------
-                    
-                -- Stores: Hereditary or risk diseases (diabetes, hypertension).
-                -- How is it passed?: The same way, you use json.dumps(python_dictionary).
-                -- How is it stored?: As plain text.
-                -- Example of a 1-line format:
-                -- '{"diabetes": "Father", "hypertension": "Paternal grandfather", "cancer": "None", "others": "None"}'
-                
+            surgical TEXT,
+            orl TEXT,
+            habits TEXT,
             family_background TEXT,
-                    
-
-            -- ----------- Soft Delete -------------
-            is_active INTEGER DEFAULT 1                            
+            is_active INTEGER DEFAULT 1,
+            
+            FOREIGN KEY (doctor_id) REFERENCES doctors(id)
         )
     ''')
 
-    # Queries Tables (Here we store the subsequent queries associated to the medical history of one patient)
-    # The relation between patient and quieres is 1 to N
-
+    # QUERIES
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS queries (
-           id INTEGER PRIMARY KEY AUTOINCREMENT, -- inquiry number
+           id INTEGER PRIMARY KEY AUTOINCREMENT, 
            patient_document_id TEXT NOT NULL,
            date TEXT NOT NULL,
            motive TEXT NOT NULL, 
            current_illness TEXT NOT NULL,  
 
-           -- Vital Signs & Anthropometry 
-           weight REAL,              
-           height REAL,                               
-           blood_pressure TEXT,      
-           heart_rate INTEGER,        
-           respiratory_rate INTEGER, 
-           temperature REAL,         
+           weight REAL, height REAL, blood_pressure TEXT,      
+           heart_rate INTEGER, respiratory_rate INTEGER, temperature REAL,         
 
-           -- Qualitative Physical Examination (Examen Físico Descriptivo)
-           -- Stored in a JSON: general_impression, constitution, facies, attitude, decubitus, 
-           -- gait, skin, head, neck, respiratory, cardiovascular, abdomen, neurological.
-           -- example: '{"general_impression": "Paciente estable", "head": "Normocéfalo", "abdomen": "Blando, depresible"}'
            physical_examination TEXT,
+           electrocardiogram TEXT,
+           chest_xray TEXT,
+           laboratory TEXT,
 
            diagnostic TEXT NOT NULL,
            treatment TEXT,
 
-           -- The bridge between patient and his queries 
            FOREIGN KEY (patient_document_id) REFERENCES patients (document_id)                                    
         )   
     ''')
@@ -146,17 +93,12 @@ def create_tables ():
             exam_name TEXT NOT NULL,
             file_path TEXT NOT NULL,       
             upload_date TEXT NOT NULL,       
-
             FOREIGN KEY (query_id) REFERENCES queries (id)                 
         )
     """)
 
-    # Attached exams to the consult 
-    # The relation between  and quieres is 1 to N
-    # We save the changes and close the conexion
     conexion.commit()
     conexion.close()
 
-# This allows execute the function "create_tables()" if the main is executed
 if __name__ == "__main__":
     create_tables()

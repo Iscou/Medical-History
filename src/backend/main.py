@@ -7,8 +7,10 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import api # Importas tu archivo limpio con las funciones de SQLite
 import os
+import sys # NEW
 import ctypes
 import database 
+import multiprocessing # NEW: Critical for PyInstaller + Uvicorn on Windows
 
 # --- WINDOWS TASKBAR FIX ---
 # This tells Windows that this is a unique application, 
@@ -43,13 +45,16 @@ class RegisterData(BaseModel):
 # --- ENDPOINTS (API) ---
 app.include_router(api.api_router)
 
-# --- DYNAMIC PATHS (CORRECTED) ---
-# BASE_DIR is .../src/backend
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-# We only need to go up ONE level to reach 'src', then enter 'frontend'
-# This points to: .../src/frontend
-FRONTEND_DIR = os.path.normpath(os.path.join(BASE_DIR, "..", "frontend"))
+# --- DYNAMIC PATHS (PYINSTALLER COMPATIBLE) ---
+# NEW: PyInstaller creates a temp folder and stores path in _MEIPASS
+if getattr(sys, 'frozen', False):
+    # Running as compiled executable
+    BUNDLE_DIR = sys._MEIPASS
+    FRONTEND_DIR = os.path.join(BUNDLE_DIR, "frontend")
+else:
+    # Running as script
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    FRONTEND_DIR = os.path.normpath(os.path.join(BASE_DIR, "..", "frontend"))
 
 # --- FrontEnd ---
 app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
@@ -61,6 +66,9 @@ def start_server():
     uvicorn.run(app, host="127.0.0.1", port=8000, log_level="warning")
 
 if __name__ == "__main__":
+    # NEW: Required by Windows when combining PyInstaller with Multiprocessing/Uvicorn
+    multiprocessing.freeze_support() 
+    
     # Ensure the database and tables exist before anything else
     try:
         database.create_tables()
@@ -81,7 +89,6 @@ if __name__ == "__main__":
         url="http://127.0.0.1:8000",
         width=1024, 
         height=768,
-        # NEW: Allows the user to stretch, maximize and resize the window
         resizable=True 
     )
     
