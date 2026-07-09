@@ -13,17 +13,39 @@
                 <h2>Sistema Clínico</h2>
                 <p id="auth-subtitle">Bienvenido doctor, por favor inicie sesión</p>
             </div>
+            
             <form id="form-login" class="auth-form active">
                 <div class="input-group">
                     <label>Correo Electrónico</label>
-                    <input type="email" id="login-email" required placeholder="house@hospital.com">
-                    <span class="error-msg" id="error-login-email" style="color: red; font-size: 12px;"></span>
+                    <input type="email" id="login-email" required placeholder="dr@hospital.com">
                 </div>
                 <div class="input-group">
                     <label>Contraseña</label>
-                    <input type="password" id="login-password" required placeholder="1234">
+                    <input type="password" id="login-password" required placeholder="****">
                 </div>
                 <button type="submit" class="btn-primary">Iniciar Sesión</button>
+                <div class="toggle-text" style="margin-top: 15px; font-size: 14px;">
+                    ¿No tienes cuenta? <span onclick="toggleAuthMode('register')" style="color: var(--primary-color); cursor: pointer; font-weight: bold;">Regístrate aquí</span>
+                </div>
+            </form>
+
+            <form id="form-register" class="auth-form hidden">
+                <div class="input-group">
+                    <label>Nombre del Médico</label>
+                    <input type="text" id="reg-name" required placeholder="Ej. Dr. Gregory House">
+                </div>
+                <div class="input-group">
+                    <label>Correo Electrónico</label>
+                    <input type="email" id="reg-email" required placeholder="correo@hospital.com">
+                </div>
+                <div class="input-group">
+                    <label>Contraseña</label>
+                    <input type="password" id="reg-password" required placeholder="Mínimo 6 caracteres">
+                </div>
+                <button type="submit" class="btn-primary" style="background: var(--success-color);">Crear Cuenta</button>
+                <div class="toggle-text" style="margin-top: 15px; font-size: 14px;">
+                    ¿Ya tienes cuenta? <span onclick="toggleAuthMode('login')" style="color: var(--primary-color); cursor: pointer; font-weight: bold;">Inicia sesión</span>
+                </div>
             </form>
         </div>
     </div>

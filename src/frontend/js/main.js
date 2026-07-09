@@ -10,6 +10,55 @@ const appState = {
     currentPatientQueries: []
 };
 
+// --- LÓGICA PARA ALTERNAR ENTRE LOGIN Y REGISTRO ---
+function toggleAuthMode(mode) {
+    const formLogin = document.getElementById('form-login');
+    const formRegister = document.getElementById('form-register');
+    const subtitle = document.getElementById('auth-subtitle');
+
+    if (mode === 'register') {
+        formLogin.classList.remove('active');
+        formLogin.classList.add('hidden');
+        formRegister.classList.remove('hidden');
+        formRegister.classList.add('active');
+        subtitle.innerText = "Cree una nueva cuenta de médico";
+    } else {
+        formRegister.classList.remove('active');
+        formRegister.classList.add('hidden');
+        formLogin.classList.remove('hidden');
+        formLogin.classList.add('active');
+        subtitle.innerText = "Bienvenido doctor, por favor inicie sesión";
+    }
+}
+
+// --- LÓGICA DE REGISTRO DE NUEVO USUARIO ---
+document.getElementById('form-register').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const name = document.getElementById('reg-name').value;
+    const email = document.getElementById('reg-email').value;
+    const password = document.getElementById('reg-password').value;
+
+    try {
+        const response = await fetch('http://127.0.0.1:8000/sign_up', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ name, email, password })
+        });
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            alert("Cuenta creada exitosamente. Ahora puede iniciar sesión.");
+            toggleAuthMode('login'); // Regresa a la pantalla principal
+            document.getElementById('form-register').reset(); // Limpia los campos
+        } else {
+            alert(`Error: ${data.msg}`);
+        }
+    } catch (error) {
+        console.error("Register fetch error:", error);
+        alert("Error de conexión con el servidor.");
+    }
+});
+
 // --- AUTH & VISTAS ---
 document.getElementById('form-login').addEventListener('submit', async function(e) {
     e.preventDefault();
