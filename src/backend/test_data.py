@@ -2,6 +2,7 @@ import database as db
 import sqlite3 as sql
 import json
 import random
+import security
 from datetime import datetime, timedelta
 
 # --- MOCK DATA POOLS ---
@@ -27,63 +28,33 @@ def random_date(start_year=1950, end_year=2005):
 def generate_doctors(cursor):
     print("Seeding doctors...")
     doctors = [
-        ("DrHouse", "1234"),
-        ("DrJuan", "admin"),
-        ("DraPerez", "password")
+        ("Dr. Gregory House", "house@hospital.com", "1234"),
+        ("Dr. Juan Reyes", "juan@hospital.com", "admin")
     ]
     for doc in doctors:
         try:
-            cursor.execute("INSERT INTO doctors (user, password) VALUES (?, ?)", doc)
+            sec_pass = security.hash_password(doc[2])
+            cursor.execute("INSERT INTO doctors (name, user, password) VALUES (?, ?, ?)", (doc[0], doc[1], sec_pass))
         except sql.IntegrityError:
-            pass # Ignore if they already exist
+            pass 
 
 def generate_patients_and_queries(cursor, num_patients=10):
-    print(f"Seeding {num_patients} patients and their queries...")
-    
+    print(f"Seeding {num_patients} patients...")
     for _ in range(num_patients):
-        # Generate Patient Data
-        gender = random.choice(["male", "female"])
-        name = random.choice(FIRST_NAMES_FEMALE) if gender == "female" else random.choice(FIRST_NAMES_MALE)
-        surname = random.choice(SURNAMES)
         doc_id = f"V-{random.randint(10000000, 30000000)}"
         
-        # Build JSON Backgrounds
-        personal_bg = {
-            "chronic_diseases": random.choice(["None", "Asthma", "Diabetes"]),
-            "surgeries": random.choice(["None", "Appendectomy 2015", "Tonsillectomy"]),
-            "habits": {"tobacco": random.choice(["Yes", "No"]), "alcohol": "Social"}
-        }
+        doctor_id = random.choice([1, 2]) 
         
-        family_bg = {
-            "diabetes": random.choice(["None", "Mother", "Father"]),
-            "hypertension": random.choice(["None", "Grandfather"])
-        }
-        
-        gynecological_bg = {}
-        if gender == "female":
-            gynecological_bg = {
-                "menarche_age": random.randint(11, 15),
-                "pregnancies": random.randint(0, 3),
-                "contraceptive": random.choice(["Pills", "IUD", "None"])
-            }
-            
-        # Insert Patient
         try:
             cursor.execute('''
                 INSERT INTO patients (
-                    document_id, names, surnames, gender, birthdate, 
-                    emergency_contact_name, emergency_contact_phone, blood_type, 
-                    occupation, marital_status, cardiovascular, respiratory, 
-                    personal_background, gynecological_background, family_background
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    document_id, doctor_id, names, surnames, gender, birthdate, 
+                    address, phone
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
-                doc_id, name, surname, gender, random_date(),
-                "Emergency Contact", f"0414-{random.randint(1000000, 9999999)}",
-                random.choice(BLOOD_TYPES), random.choice(OCCUPATIONS), random.choice(MARITAL_STATUS),
-                random.choice(["Normal", "Slight arrhythmia", ""]), random.choice(["Clear", "Wheezing", ""]),
-                json.dumps(personal_bg), json.dumps(gynecological_bg), json.dumps(family_bg)
+                doc_id, doctor_id, "Nombre", "Apellido", "male", "1990-01-01", 
+                "Caracas, Venezuela", "0414-0000000"
             ))
-            
             # Generate 1 to 3 queries for this patient
             num_queries = random.randint(1, 3)
             for _ in range(num_queries):

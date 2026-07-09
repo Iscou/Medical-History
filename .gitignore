@@ -19,3 +19,16 @@ src/backend/uploads/*
 # ------------------- SO Files -------------------
 .DS_Store
 Thumbs.db
+
+# PyInstaller y compilaciones
+build/
+dist/
+*.spec
+
+# Ignorar carpetas de compilación y distribución
+build/
+dist/
+__pycache__/
+*.spec
+medic_system.db
+venv/
