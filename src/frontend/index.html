@@ -42,7 +42,17 @@
                     <label>Contraseña</label>
                     <input type="password" id="reg-password" required placeholder="Mínimo 6 caracteres">
                 </div>
-                <button type="submit" class="btn-primary" style="background: var(--success-color);">Crear Cuenta</button>
+                
+                <button type="button" class="btn-primary" id="btn-send-otp" style="background: var(--secondary-color);" onclick="requestOTP()">1. Solicitar Código al Correo</button>
+
+                <div id="otp-section" class="hidden" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+                    <div class="input-group">
+                        <label>Código de Verificación (6 dígitos)</label>
+                        <input type="text" id="reg-otp" placeholder="123456" maxlength="6">
+                    </div>
+                    <button type="submit" class="btn-primary" id="btn-register-submit" style="background: var(--success-color); margin-top: 15px; width: 100%;">2. Crear Cuenta</button>
+                </div>
+
                 <div class="toggle-text" style="margin-top: 15px; font-size: 14px;">
                     ¿Ya tienes cuenta? <span onclick="toggleAuthMode('login')" style="color: var(--primary-color); cursor: pointer; font-weight: bold;">Inicia sesión</span>
                 </div>

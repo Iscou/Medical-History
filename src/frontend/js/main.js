@@ -1,4 +1,4 @@
-// --- ESTADO GLOBAL ---
+// --- GLOBAL STATE ---
 const appState = {
     authenticated: false,
     doctorId: null,
@@ -6,11 +6,11 @@ const appState = {
     doctorEmail: "", 
     currentView: 'summary',
     patientsList: [], 
-    currentPatientData: null, // Guardamos todos los detalles para imprimirlos
+    currentPatientData: null, // Store all details for printing
     currentPatientQueries: []
 };
 
-// --- LÓGICA PARA ALTERNAR ENTRE LOGIN Y REGISTRO ---
+// --- LOGIN/REGISTER TOGGLE LOGIC ---
 function toggleAuthMode(mode) {
     const formLogin = document.getElementById('form-login');
     const formRegister = document.getElementById('form-register');
@@ -31,25 +31,69 @@ function toggleAuthMode(mode) {
     }
 }
 
-// --- LÓGICA DE REGISTRO DE NUEVO USUARIO ---
+// --- OTP REQUEST LOGIC ---
+async function requestOTP() {
+    const email = document.getElementById('reg-email').value;
+    if (!email) {
+        alert("Por favor, ingrese un correo electrónico primero.");
+        return;
+    }
+
+    const btn = document.getElementById('btn-send-otp');
+    btn.innerText = "Enviando...";
+    btn.disabled = true;
+
+    try {
+        const response = await fetch('http://127.0.0.1:8000/send_otp', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ email })
+        });
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            alert(data.msg);
+            document.getElementById('otp-section').classList.remove('hidden');
+            btn.innerText = "Reenviar Código";
+        } else {
+            alert(`Error: ${data.msg}`);
+            btn.innerText = "1. Solicitar Código al Correo";
+        }
+    } catch (error) {
+        console.error("OTP Error:", error);
+        alert("Error de conexión al intentar enviar el correo.");
+        btn.innerText = "1. Solicitar Código al Correo";
+    }
+    btn.disabled = false;
+}
+
+// --- REGISTRATION WITH OTP LOGIC ---
 document.getElementById('form-register').addEventListener('submit', async function(e) {
     e.preventDefault();
     const name = document.getElementById('reg-name').value;
     const email = document.getElementById('reg-email').value;
     const password = document.getElementById('reg-password').value;
+    const code = document.getElementById('reg-otp').value; // Capture the OTP code
+
+    if (!code) {
+        alert("Debe ingresar el código de verificación enviado a su correo.");
+        return;
+    }
 
     try {
         const response = await fetch('http://127.0.0.1:8000/sign_up', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ name, email, password })
+            body: JSON.stringify({ name, email, password, code })
         });
         const data = await response.json();
         
         if (data.status === 'success') {
             alert("Cuenta creada exitosamente. Ahora puede iniciar sesión.");
-            toggleAuthMode('login'); // Regresa a la pantalla principal
-            document.getElementById('form-register').reset(); // Limpia los campos
+            toggleAuthMode('login'); 
+            document.getElementById('form-register').reset();
+            document.getElementById('otp-section').classList.add('hidden'); // Hide OTP section
+            document.getElementById('btn-send-otp').innerText = "1. Solicitar Código al Correo";
         } else {
             alert(`Error: ${data.msg}`);
         }
@@ -59,7 +103,7 @@ document.getElementById('form-register').addEventListener('submit', async functi
     }
 });
 
-// --- AUTH & VISTAS ---
+// --- AUTHENTICATION & VIEWS ---
 document.getElementById('form-login').addEventListener('submit', async function(e) {
     e.preventDefault();
     const email = document.getElementById('login-email').value;
@@ -84,7 +128,7 @@ document.getElementById('form-login').addEventListener('submit', async function(
             document.getElementById('topbar-doc-name').innerText = appState.doctorName;
             document.getElementById('welcome-message').innerText = `Bienvenido, ${appState.doctorName}`;
             
-            // Cargar firma guardada localmente si existe
+            // Load locally saved signature if it exists
             const savedSig = localStorage.getItem(`signature_${appState.doctorId}`);
             if(savedSig) {
                 document.getElementById('preview-signature').src = savedSig;
@@ -101,7 +145,7 @@ document.getElementById('form-login').addEventListener('submit', async function(
 });
 
 function handleLogout() {
-    location.reload(); // Forma más limpia de limpiar estado
+    location.reload(); // Cleanest way to clear state
 }
 
 function switchView(viewName) {
@@ -120,7 +164,7 @@ function switchView(viewName) {
     }
 }
 
-// --- LOGICA DE DATOS ---
+// --- DATA FETCHING LOGIC ---
 async function loadRecentPatients() {
     if(!appState.doctorId) return;
     try {
@@ -168,27 +212,27 @@ function filterPatientsTable() {
     renderPatientsTable(filtered);
 }
 
-// --- LOGICA DE SEXO FEMENINO ---
+// --- FEMALE GENDER SPECIFIC LOGIC ---
 function toggleUrogenital(gender) {
     const box = document.getElementById('urogenital-container');
     if (gender === 'female') {
         box.classList.remove('hidden');
-        document.getElementById('cp-int-uro').required = false; // Opcional
+        document.getElementById('cp-int-uro').required = false; // Optional
     } else {
         box.classList.add('hidden');
-        document.getElementById('cp-int-uro').value = ""; // Limpiar
+        document.getElementById('cp-int-uro').value = ""; // Clear value
     }
 }
 
-// --- CREAR PACIENTE CON TODOS LOS CAMPOS ---
+// --- CREATE PATIENT WITH ALL FIELDS ---
 async function handleCreatePatient(e) {
     e.preventDefault();
     const formData = new FormData();
     
-    // Vinculamos la historia al doctor actual
+    // Link history to current doctor
     formData.append("doctor_id", appState.doctorId);
     
-    // Personales
+    // Personal info
     formData.append("document_id", document.getElementById('cp-pat-cedula').value);
     formData.append("names", document.getElementById('cp-pat-names').value);
     formData.append("surnames", document.getElementById('cp-pat-surnames').value);
@@ -199,11 +243,11 @@ async function handleCreatePatient(e) {
     formData.append("address", document.getElementById('cp-pat-address').value);
     formData.append("phone", document.getElementById('cp-pat-phone').value);
 
-    // Consulta
+    // Query
     formData.append("motive", document.getElementById('cp-motive').value);
     formData.append("current_illness", document.getElementById('cp-illness').value);
 
-    // Interrogatorio
+    // Background
     formData.append("cardiovascular", document.getElementById('cp-int-cardio').value);
     formData.append("pulmonary", document.getElementById('cp-int-pulmonary').value);
     formData.append("neurological", document.getElementById('cp-int-neuro').value);
@@ -217,7 +261,7 @@ async function handleCreatePatient(e) {
     formData.append("habits", document.getElementById('cp-int-habits').value);
     formData.append("family_background", document.getElementById('cp-int-family').value);
 
-    // Físico y Auxiliares
+    // Physical exam and Auxiliaries
     formData.append("weight", document.getElementById('cp-weight').value || 0);
     formData.append("blood_pressure", document.getElementById('cp-bp').value);
     formData.append("heart_rate", document.getElementById('cp-hr').value || 0);
@@ -226,11 +270,11 @@ async function handleCreatePatient(e) {
     formData.append("chest_xray", document.getElementById('cp-aux-rx').value);
     formData.append("laboratory", document.getElementById('cp-aux-lab').value);
 
-    // Diagnóstico
+    // Diagnostics
     formData.append("diagnostic", document.getElementById('cp-diagnostic').value);
     formData.append("treatment", document.getElementById('cp-treatment').value);
 
-    // Archivos
+    // Files
     const files = document.getElementById('cp-file').files;
     for (let i = 0; i < files.length; i++) formData.append("exam_files", files[i]);
 
@@ -247,7 +291,7 @@ async function handleCreatePatient(e) {
     } catch (error) { console.error(error); }
 }
 
-// --- DETALLES Y GENERADOR DE PDF ---
+// --- PATIENT DETAILS & PDF GENERATOR ---
 async function loadPatientDetails(document_id) {
     try {
         const response = await fetch(`http://127.0.0.1:8000/patient/details/${document_id}`);
@@ -263,7 +307,7 @@ async function loadPatientDetails(document_id) {
             document.getElementById('details-phone').innerHTML = `<strong>Teléfono:</strong> ${data.patient.phone || 'N/A'}`;
             document.getElementById('details-address').innerHTML = `<strong>Dirección:</strong> ${data.patient.address || 'N/A'}`;
 
-            // Llenar el Preview de antecedentes
+            // Populate background preview
             const ant = data.patient;
             let antHtml = `
                 <p><strong>Cardiovascular:</strong> ${ant.cardiovascular || '-'}</p>
@@ -276,7 +320,7 @@ async function loadPatientDetails(document_id) {
             if(ant.gender === 'female') antHtml += `<p><strong>Urogenital:</strong> ${ant.urogenital || '-'}</p>`;
             document.getElementById('details-antecedents').innerHTML = antHtml;
 
-            // Llenar Línea de tiempo y botones de descarga
+            // Populate timeline and download buttons
             const timeline = document.getElementById('details-queries-timeline');
             timeline.innerHTML = '';
             
@@ -287,7 +331,7 @@ async function loadPatientDetails(document_id) {
                 if (queryExams.length > 0) {
                     examsHtml += `<div style="margin-top: 10px;"><strong>Archivos Adjuntos:</strong><br>`;
                     queryExams.forEach(e => {
-                        // Botón de descarga conectado al nuevo endpoint de Python
+                        // Download button linked to Python endpoint
                         examsHtml += `<button type="button" class="btn-primary" style="background: #95a5a6; padding: 5px 10px; font-size: 12px; margin-right: 5px; margin-top: 5px;" onclick="window.open('http://127.0.0.1:8000/exam/download/${e.id}', '_blank')">📎 ${e.exam_name}</button>`;
                     });
                     examsHtml += `</div>`;
@@ -307,7 +351,7 @@ async function loadPatientDetails(document_id) {
     } catch (error) { console.error(error); }
 }
 
-// MAGIA 2.0: Generador de Documento Médico (Solución Iframe para evitar bloqueos)
+// --- MEDICAL DOCUMENT GENERATOR (Iframe solution to bypass blockers) ---
 function printMedicalRecord() {
     const p = appState.currentPatientData;
     const q = appState.currentPatientQueries[0]; 
@@ -319,26 +363,26 @@ function printMedicalRecord() {
         <head>
             <title>Historia Médica - ${p.names} ${p.surnames}</title>
             <style>
-                /* --- ESTILOS DE IMPRESIÓN LIMPIA --- */
+                /* --- CLEAN PRINT STYLES --- */
                 @page {
                     size: auto;
-                    margin: 20mm 15mm 20mm 15mm; /* Margen físico de la hoja */
+                    margin: 20mm 15mm 20mm 15mm; /* Physical page margins */
                 }
                 
                 html, body {
                     background-color: #fff;
-                    margin: 0px;  /* Quita los márgenes por defecto del navegador */
+                    margin: 0px;  /* Remove default browser margins */
                     padding: 0px;
                 }
 
-                /* Oculta los encabezados y pies de página nativos de Windows */
+                /* Hide native Windows headers and footers */
                 @media print {
                     thead { display: table-header-group; }
                     tfoot { display: table-footer-group; }
                     body { -webkit-print-color-adjust: exact; }
                 }
 
-                /* --- DISEÑO DEL DOCUMENTO --- */
+                /* --- DOCUMENT LAYOUT --- */
                 body { font-family: Arial, sans-serif; padding: 20px; color: #000; line-height: 1.5; font-size: 14px; }
                 h2, h3 { text-align: center; color: #2c3e50; margin: 5px 0; }
                 .header { border-bottom: 2px solid #2c3e50; padding-bottom: 10px; margin-bottom: 20px; }
@@ -396,7 +440,7 @@ function printMedicalRecord() {
         </html>
     `;
 
-    // Inyectar iframe invisible para imprimir sin alertas de Windows
+    // Inject invisible iframe to print without native Windows warnings
     let iframe = document.getElementById('print-iframe');
     if (!iframe) {
         iframe = document.createElement('iframe');
@@ -416,7 +460,7 @@ function printMedicalRecord() {
 }
 window.printPatientHistory = printMedicalRecord;
 
-// --- LOGICA CONSULTA EVOLUTIVA ---
+// --- EVOLUTIONARY QUERY LOGIC ---
 function openEvolutionaryQuery() {
     document.getElementById('eq-patient-name-label').innerText = `${appState.currentPatientData.names} ${appState.currentPatientData.surnames}`;
     document.getElementById('form-add-query').reset();
@@ -432,7 +476,7 @@ async function handleEvolutionaryQuery(e) {
     formData.append("current_illness", document.getElementById('eq-illness').value);
     formData.append("diagnostic", document.getElementById('eq-diagnostic').value);
     
-    // Rellenamos los campos ocultos para no romper la base de datos
+    // Fill hidden fields to maintain database integrity
     formData.append("treatment", "");
     formData.append("weight", 0);
     formData.append("height", 0);
@@ -453,14 +497,14 @@ async function handleEvolutionaryQuery(e) {
         const result = await response.json();
         if (result.status === 'success') {
             alert(result.msg);
-            loadPatientDetails(appState.currentPatientData.document_id); // Recargar preview
+            loadPatientDetails(appState.currentPatientData.document_id); // Reload preview
         } else {
             alert(`Error: ${result.msg}`);
         }
     } catch (error) { console.error(error); }
 }
 
-// --- GUARDAR CONFIGURACIÓN Y FIRMA (Base64 Client-Side) ---
+// --- SAVE SETTINGS & SIGNATURE (Base64 Client-Side) ---
 async function handleSettingsUpdate(e) {
     e.preventDefault();
     const name = document.getElementById('set-name').value;

@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-import api # Importas tu archivo limpio con las funciones de SQLite
+import api_routes # Import the custom routing and SQLite logic
 import os
 import sys # NEW
 import ctypes
@@ -43,10 +43,10 @@ class RegisterData(BaseModel):
     password: str
 
 # --- ENDPOINTS (API) ---
-app.include_router(api.api_router)
+app.include_router(api_routes.api_router)
 
 # --- DYNAMIC PATHS (PYINSTALLER COMPATIBLE) ---
-# NEW: PyInstaller creates a temp folder and stores path in _MEIPASS
+# PyInstaller creates a temp folder and stores path in _MEIPASS
 if getattr(sys, 'frozen', False):
     # Running as compiled executable
     BUNDLE_DIR = sys._MEIPASS
@@ -66,7 +66,7 @@ def start_server():
     uvicorn.run(app, host="127.0.0.1", port=8000, log_level="warning")
 
 if __name__ == "__main__":
-    # NEW: Required by Windows when combining PyInstaller with Multiprocessing/Uvicorn
+    # Required by Windows when combining PyInstaller with Multiprocessing/Uvicorn
     multiprocessing.freeze_support() 
     
     # Ensure the database and tables exist before anything else

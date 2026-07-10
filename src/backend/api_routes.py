@@ -6,10 +6,24 @@ from pydantic import BaseModel
 from typing import Optional, List
 from fastapi.responses import FileResponse
 import json
-import datetime
 import os
 import sys 
 import shutil
+import smtplib
+from email.mime.text import MIMEText
+import random
+from datetime import datetime, timedelta
+from dotenv import load_dotenv
+
+# --- SECURE ENVIRONMENT VARIABLE LOADING (PYINSTALLER COMPATIBLE) ---
+if getattr(sys, 'frozen', False):
+    # If running as a compiled executable, find .env in the PyInstaller temp folder
+    env_path = os.path.join(sys._MEIPASS, '.env')
+else:
+    # If running in development mode, find .env in the standard root directory
+    env_path = '.env'
+
+load_dotenv(env_path)
 
 # Main router for API endpoints
 api_router = APIRouter()
@@ -24,15 +38,25 @@ else:
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+# --- EMAIL SMTP CONFIGURATION ---
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
+SENDER_EMAIL = os.getenv("SMTP_EMAIL") 
+SENDER_PASSWORD = os.getenv("SMTP_PASSWORD")
+
 # --- DATA MODELS (PYDANTIC) ---
 class LoginData(BaseModel):
     email: str
     password: str
 
+class OTPRequest(BaseModel):
+    email: str
+
 class RegisterData(BaseModel):
     name: str 
     email: str
     password: str
+    code: str 
 
 class UpdateDoctorSchema(BaseModel):
     doctor_id: int
@@ -46,6 +70,35 @@ class PatientListItem(BaseModel):
     surnames: str
 
 # --- INTERNAL FUNCTIONS ---
+def generate_and_send_otp(email: str):
+    """Generates a 6-digit OTP, saves it to DB, and sends it via email."""
+    code = str(random.randint(100000, 999999))
+    expires_at = datetime.now() + timedelta(minutes=10) # Code valid for 10 minutes
+    
+    try:
+        conn = database.connect()
+        cursor = conn.cursor()
+        cursor.execute("INSERT OR REPLACE INTO otp_codes (email, code, expires_at) VALUES (?, ?, ?)", 
+                       (email, code, expires_at.strftime("%Y-%m-%d %H:%M:%S")))
+        conn.commit()
+        conn.close()
+
+        # Configure and send email
+        msg = MIMEText(f"Your verification code for MediHistorial is: {code}\nThis code expires in 10 minutes.")
+        msg['Subject'] = 'MediHistorial - Verification Code'
+        msg['From'] = SENDER_EMAIL
+        msg['To'] = email
+
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(SENDER_EMAIL, SENDER_PASSWORD)
+        server.send_message(msg)
+        server.quit()
+        
+        return {"status": "success", "msg": "Verification code sent to your email successfully."}
+    except Exception as e:
+        return {"status": "error", "msg": f"Error sending email: {str(e)}"}
+
 def verify_doctor_login(email, password):
     """Checks credentials against database"""
     try:
@@ -86,7 +139,7 @@ def internal_get_all_active_patients(doctor_id: int):
     try:
         conn = database.connect()
         cursor = conn.cursor()
-        # Privacity: Only carry patients of the doctor that log in
+        # Privacy: Only fetch patients associated with the logged-in doctor
         cursor.execute("SELECT document_id, names, surnames FROM patients WHERE is_active = 1 AND doctor_id = ?", (doctor_id,))
         patients = cursor.fetchall()
         conn.close()
@@ -99,13 +152,46 @@ def internal_get_all_active_patients(doctor_id: int):
         return []
 
 # --- API ROUTER ENDPOINTS ---
+@api_router.post("/send_otp")
+def send_otp(data: OTPRequest):
+    return generate_and_send_otp(data.email)
+
 @api_router.post("/login")
 def process_login(data: LoginData):
     return verify_doctor_login(data.email, data.password)
 
 @api_router.post("/sign_up")
 def process_signup(data: RegisterData):
-    return sign_in_doctor(data.name, data.email, data.password)
+    """Verifies OTP first, then registers the doctor."""
+    try:
+        conn = database.connect()
+        cursor = conn.cursor()
+        cursor.execute("SELECT code, expires_at FROM otp_codes WHERE email = ?", (data.email,))
+        record = cursor.fetchone()
+        
+        if not record:
+            conn.close()
+            return {"status": "error", "msg": "You must request a verification code first."}
+            
+        db_code, expires_at_str = record
+        expires_at = datetime.strptime(expires_at_str, "%Y-%m-%d %H:%M:%S")
+        
+        if datetime.now() > expires_at:
+            conn.close()
+            return {"status": "error", "msg": "The code has expired. Please request a new one."}
+            
+        if data.code != db_code:
+            conn.close()
+            return {"status": "error", "msg": "Incorrect verification code."}
+            
+        # If valid, delete the used code and register
+        cursor.execute("DELETE FROM otp_codes WHERE email = ?", (data.email,))
+        conn.commit()
+        conn.close()
+        
+        return sign_in_doctor(data.name, data.email, data.password)
+    except Exception as e:
+         return {"status": "error", "msg": f"OTP Verification error: {str(e)}"}
 
 @api_router.post("/doctor/update")
 def update_doctor_settings(data: UpdateDoctorSchema):
@@ -123,13 +209,12 @@ def update_doctor_settings(data: UpdateDoctorSchema):
             
         conn.commit()
         conn.close()
-        return {"status": "success", "msg": "Perfil actualizado exitosamente."}
+        return {"status": "success", "msg": "Profile updated successfully."}
     except sqlite3.IntegrityError:
-        return {"status": "error", "msg": "El correo ingresado ya está en uso por otra cuenta."}
+        return {"status": "error", "msg": "The email provided is already in use by another account."}
     except Exception as e:
         return {"status": "error", "msg": f"Error updating doctor: {str(e)}"}
 
-# 
 @api_router.get("/patients/all/{doctor_id}", response_model=List[PatientListItem])
 def get_patients_all(doctor_id: int):
     return internal_get_all_active_patients(doctor_id)
@@ -159,7 +244,7 @@ async def create_patient_history(
     marital_status: str = Form(""),
     address: str = Form(""),
     phone: str = Form(""),
-    # background
+    # Background fields
     cardiovascular: str = Form(""),
     pulmonary: str = Form(""),
     neurological: str = Form(""),
@@ -211,7 +296,7 @@ async def create_patient_history(
         ))
 
         # Insert inital query
-        current_date = datetime.date.today().strftime("%Y-%m-%d")
+        current_date = datetime.now().strftime("%Y-%m-%d")
         query_consult = '''
             INSERT INTO queries (
                 patient_document_id, date, motive, current_illness, diagnostic, treatment,
@@ -245,12 +330,12 @@ async def create_patient_history(
 
         conn.commit()
         conn.close()
-        return {"status": "success", "msg": "Historia médica creada exitosamente."}
+        return {"status": "success", "msg": "Medical history created successfully."}
         
     except sqlite3.IntegrityError:
-        return {"status": "error", "msg": "La cédula de este paciente ya existe en el sistema."}
+        return {"status": "error", "msg": "The ID for this patient already exists in the system."}
     except Exception as e:
-        return {"status": "error", "msg": f"Error en la base de datos: {str(e)}"}
+        return {"status": "error", "msg": f"Database error: {str(e)}"}
 
 @api_router.get("/patient/details/{document_id}")
 def get_patient_details(document_id: str):
@@ -309,7 +394,7 @@ async def add_evolutionary_query(
         conn = database.connect()
         cursor = conn.cursor()
         
-        current_date = datetime.date.today().strftime("%Y-%m-%d")
+        current_date = datetime.now().strftime("%Y-%m-%d")
         
         query_sql = '''
             INSERT INTO queries (
@@ -343,12 +428,12 @@ async def add_evolutionary_query(
         
         conn.commit()
         conn.close()
-        return {"status": "success", "msg": "Consulta evolutiva guardada exitosamente."}
+        return {"status": "success", "msg": "Evolutionary query saved successfully."}
         
     except sqlite3.Error as e:
         return {"status": "error", "msg": f"Database error creating query: {str(e)}"}
     
-# --- Download of adjunted files ---
+# --- DOWNLOAD EXAMS ROUTE ---
 @api_router.get("/exam/download/{exam_id}")
 def download_exam(exam_id: int):
     try:
@@ -360,6 +445,6 @@ def download_exam(exam_id: int):
 
         if exam and os.path.exists(exam[0]):
             return FileResponse(path=exam[0], filename=exam[1])
-        return {"status": "error", "msg": "El archivo no existe en el disco."}
+        return {"status": "error", "msg": "The file does not exist on disk."}
     except Exception as e:
         return {"status": "error", "msg": str(e)}

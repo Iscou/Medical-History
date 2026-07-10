@@ -43,7 +43,7 @@ def create_tables():
             address TEXT,
             phone TEXT,
             
-            -- Interrogatorio y Antecedentes
+            -- Functional Inquiry and Medical Background
             cardiovascular TEXT,
             pulmonary TEXT,
             neurological TEXT,
@@ -96,6 +96,15 @@ def create_tables():
             FOREIGN KEY (query_id) REFERENCES queries (id)                 
         )
     """)
+
+    # OTP CODES (Email verification)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS otp_codes (
+            email TEXT PRIMARY KEY,
+            code TEXT NOT NULL,
+            expires_at DATETIME NOT NULL
+        )
+    ''')
 
     conexion.commit()
     conexion.close()
