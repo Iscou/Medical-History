@@ -157,9 +157,8 @@
                                 <textarea id="cp-int-pulmonary" placeholder="Pulmonar" rows="2" style="grid-column: span 1;"></textarea>
                                 <textarea id="cp-int-neuro" placeholder="Neurológico" rows="2" style="grid-column: span 1;"></textarea>
                                 
-                                <div id="urogenital-container" class="hidden" style="grid-column: span 1;">
-                                    <textarea id="cp-int-uro" placeholder="Urogenital (AGO)" rows="2" style="width: 100%;"></textarea>
-                                </div>
+                                <textarea id="cp-int-uro" placeholder="Urogenital" rows="2" style="grid-column: span 1;"></textarea>
+                                <textarea id="cp-int-obs" class="hidden" placeholder="Obstétricos (Gestaciones, Partos...)" rows="2" style="grid-column: span 1;"></textarea>
                                 
                                 <textarea id="cp-int-eyes" placeholder="Ojos" rows="2" style="grid-column: span 1;"></textarea>
                                 <textarea id="cp-int-osteo" placeholder="Osteomuscular" rows="2" style="grid-column: span 1;"></textarea>
@@ -175,10 +174,30 @@
                         <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
                             <h5>Examen Físico (Signos Vitales y Descriptivo)</h5>
                             <div class="input-grid">
-                                <input type="number" id="cp-weight" step="0.1" placeholder="Peso (kg)">
+                                <div style="display:flex; gap:5px;">
+                                    <input type="number" id="cp-weight" step="0.1" placeholder="Peso" oninput="calculateVitals()">
+                                    <select id="cp-weight-unit" onchange="calculateVitals()"><option value="kg">kg</option><option value="lb">lb</option></select>
+                                </div>
+                                <div style="display:flex; gap:5px;">
+                                    <input type="number" id="cp-height" step="0.01" placeholder="Altura" oninput="calculateVitals()">
+                                    <select id="cp-height-unit" onchange="calculateVitals()"><option value="m">m</option><option value="cm">cm</option></select>
+                                </div>
+                                
+                                <div style="grid-column: span 2; padding: 5px 0;">
+                                    <span id="imc-result" style="font-weight:bold; color:var(--primary-color);">IMC: --</span>
+                                </div>
+
                                 <input type="text" id="cp-bp" placeholder="Presión Arterial (Ej. 120/80)">
-                                <input type="number" id="cp-hr" placeholder="Frecuencia Cardíaca (lpm)">
-                                <textarea id="cp-phys-exam" placeholder="Describa el examen físico general..." rows="2"></textarea>
+                                <input type="number" id="cp-temp" step="0.1" placeholder="Temperatura (°C)">
+                                
+                                <input type="number" id="cp-hr" placeholder="Frec. Cardíaca (lpm)" oninput="calculateVitals()">
+                                <input type="number" id="cp-qt" placeholder="Intervalo QT medido (ms) *Opcional" oninput="calculateVitals()">
+                                
+                                <div style="grid-column: span 2; padding: 5px 0;">
+                                    <span id="qtc-result" style="font-weight:bold; color:var(--secondary-color);">QTc (Bazett): -- ms</span>
+                                </div>
+
+                                <textarea id="cp-phys-exam" placeholder="Describa el examen físico general..." rows="2" style="grid-column: span 2;"></textarea>
                             </div>
                         </div>
 
@@ -228,8 +247,7 @@
                             <p id="details-address"><strong>Dirección:</strong> </p>
                             
                             <h5 style="color: var(--primary-color); margin-top: 15px; border-bottom: 1px solid #eee; padding-bottom: 5px;">Antecedentes y Hábitos</h5>
-                            <div id="details-antecedents" style="font-size: 13px; color: #555; line-height: 1.6; margin-top: 10px;">
-                                </div>
+                            <div id="details-antecedents" style="font-size: 13px; color: #555; line-height: 1.6; margin-top: 10px;"></div>
                         </div>
                         
                         <div style="flex: 2; background: white; padding: 20px; border-radius: 8px;">
@@ -252,7 +270,8 @@
                             <div class="input-grid">
                                 <input type="text" id="eq-motive" placeholder="Motivo (Ej. Control Médico)" value="Consulta Evolutiva" required>
                                 <input type="text" id="eq-diagnostic" placeholder="Diagnóstico Actual" required>
-                                <textarea id="eq-illness" placeholder="Redacte aquí la evolución del paciente..." rows="12" required style="grid-column: span 2; font-size: 15px; padding: 15px;"></textarea>
+                                <textarea id="eq-illness" placeholder="Redacte aquí la evolución del paciente..." rows="6" required style="grid-column: span 2;"></textarea>
+                                <textarea id="eq-treatment" placeholder="Tratamiento e indicaciones evolutivas" rows="3" style="grid-column: span 2;"></textarea>
                             </div>
                         </div>
 
