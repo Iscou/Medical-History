@@ -2,17 +2,14 @@ import database as db
 import sqlite3 as sql
 import json
 import random
+import security
 from datetime import datetime, timedelta
 
 # --- MOCK DATA POOLS ---
 FIRST_NAMES_MALE = ["Carlos", "Luis", "Miguel", "Alejandro", "Jose"]
 FIRST_NAMES_FEMALE = ["Ana", "Maria", "Sofia", "Valeria", "Laura"]
 SURNAMES = ["Perez", "Gomez", "Rodriguez", "Zerpa", "Mendoza", "Gonzalez", "Silva"]
-BLOOD_TYPES = ['A+', 'A-', 'B+', 'O+', 'O-']
-OCCUPATIONS = ["Engineer", "Teacher", "Student", "Lawyer", "Accountant", "Artist"]
-MARITAL_STATUS = ["Single", "Married", "Divorced", "Widowed"]
-MOTIVES = ["Fever and headache", "Routine checkup", "Stomach pain", "High blood pressure check", "Chest pain"]
-DIAGNOSTICS = ["Viral infection", "Healthy", "Gastritis", "Hypertension", "Muscle strain"]
+DIAGNOSTICS = ["Viral infection", "Healthy", "Gastritis", "Controlled Hypertension", "Sprain"]
 
 def random_date(start_year=1950, end_year=2005):
     """Generates a random date in YYYY-MM-DD format."""
@@ -21,112 +18,93 @@ def random_date(start_year=1950, end_year=2005):
     time_between_dates = end_date - start_date
     days_between_dates = time_between_dates.days
     random_number_of_days = random.randrange(days_between_dates)
-    random_date = start_date + timedelta(days=random_number_of_days)
-    return random_date.strftime("%Y-%m-%d")
+    return (start_date + timedelta(days=random_number_of_days)).strftime("%Y-%m-%d")
 
 def generate_doctors(cursor):
+    """Injects default mock doctors."""
     print("Seeding doctors...")
     doctors = [
-        ("DrHouse", "1234"),
-        ("DrJuan", "admin"),
-        ("DraPerez", "password")
+        ("Dr. Gregory House", "house@hospital.com", "1234"),
+        ("Dr. Juan Reyes", "juan@hospital.com", "admin")
     ]
     for doc in doctors:
         try:
-            cursor.execute("INSERT INTO doctors (user, password) VALUES (?, ?)", doc)
+            sec_pass = security.hash_password(doc[2])
+            cursor.execute("INSERT INTO doctors (name, user, password) VALUES (?, ?, ?)", (doc[0], doc[1], sec_pass))
         except sql.IntegrityError:
-            pass # Ignore if they already exist
+            pass 
 
 def generate_patients_and_queries(cursor, num_patients=10):
-    print(f"Seeding {num_patients} patients and their queries...")
+    """Injects random patients securely linked only to mock doctors."""
+    print(f"Seeding {num_patients} patients...")
     
+    # FETCH EXACT IDs FOR THE MOCK DOCTORS TO PREVENT ID COLLISIONS
+    cursor.execute("SELECT id FROM doctors WHERE user IN ('house@hospital.com', 'juan@hospital.com')")
+    valid_doctor_ids = [row[0] for row in cursor.fetchall()]
+    
+    if not valid_doctor_ids:
+        print("Mock doctors not found. Skipping patient seeding.")
+        return
+
     for _ in range(num_patients):
-        # Generate Patient Data
-        gender = random.choice(["male", "female"])
-        name = random.choice(FIRST_NAMES_FEMALE) if gender == "female" else random.choice(FIRST_NAMES_MALE)
-        surname = random.choice(SURNAMES)
         doc_id = f"V-{random.randint(10000000, 30000000)}"
+        doctor_id = random.choice(valid_doctor_ids) 
+        gender = random.choice(["male", "female"])
+        name = random.choice(FIRST_NAMES_MALE) if gender == "male" else random.choice(FIRST_NAMES_FEMALE)
         
-        # Build JSON Backgrounds
-        personal_bg = {
-            "chronic_diseases": random.choice(["None", "Asthma", "Diabetes"]),
-            "surgeries": random.choice(["None", "Appendectomy 2015", "Tonsillectomy"]),
-            "habits": {"tobacco": random.choice(["Yes", "No"]), "alcohol": "Social"}
-        }
-        
-        family_bg = {
-            "diabetes": random.choice(["None", "Mother", "Father"]),
-            "hypertension": random.choice(["None", "Grandfather"])
-        }
-        
-        gynecological_bg = {}
-        if gender == "female":
-            gynecological_bg = {
-                "menarche_age": random.randint(11, 15),
-                "pregnancies": random.randint(0, 3),
-                "contraceptive": random.choice(["Pills", "IUD", "None"])
-            }
-            
-        # Insert Patient
         try:
+            # Insertion with ALL fields from the database
             cursor.execute('''
                 INSERT INTO patients (
-                    document_id, names, surnames, gender, birthdate, 
-                    emergency_contact_name, emergency_contact_phone, blood_type, 
-                    occupation, marital_status, cardiovascular, respiratory, 
-                    personal_background, gynecological_background, family_background
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    document_id, doctor_id, referred, names, surnames, gender, birthdate, 
+                    marital_status, address, phone, cardiovascular, pulmonary, neurological, 
+                    urogenital, eyes, osteomuscular, metabolic, allergic, surgical, orl, 
+                    habits, family_background
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
-                doc_id, name, surname, gender, random_date(),
-                "Emergency Contact", f"0414-{random.randint(1000000, 9999999)}",
-                random.choice(BLOOD_TYPES), random.choice(OCCUPATIONS), random.choice(MARITAL_STATUS),
-                random.choice(["Normal", "Slight arrhythmia", ""]), random.choice(["Clear", "Wheezing", ""]),
-                json.dumps(personal_bg), json.dumps(gynecological_bg), json.dumps(family_bg)
+                doc_id, doctor_id, "No", name, random.choice(SURNAMES), gender, random_date(), 
+                "Single", "Caracas, Distrito Capital", "0414-1234567",
+                "Normal", "Symmetrical thorax", "Conscious patient",
+                "Menarche at 12" if gender == "female" else "Normal",
+                "Isocoric pupils", "Preserved strength", "Denies diabetes", "Penicillin",
+                "Appendectomy (2015)", "Normal", "Social smoking", "Hypertensive father"
             ))
             
-            # Generate 1 to 3 queries for this patient
+            # Generate querys for the patients
             num_queries = random.randint(1, 3)
             for _ in range(num_queries):
-                phys_exam = {
-                    "general_impression": "Stable",
-                    "abdomen": "Soft, painless",
-                    "head": "Normocephalic"
-                }
-                
                 cursor.execute('''
                     INSERT INTO queries (
                        patient_document_id, date, motive, current_illness,
                        weight, height, blood_pressure, heart_rate, respiratory_rate,
-                       temperature, physical_examination, diagnostic, treatment
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                       temperature, physical_examination, electrocardiogram, chest_xray, 
+                       laboratory, diagnostic, treatment
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
-                    doc_id, random_date(2025, 2026), random.choice(MOTIVES), 
-                    "Patient reports symptoms starting 2 days ago.",
-                    round(random.uniform(50.0, 90.0), 1), round(random.uniform(1.50, 1.90), 2), 
+                    doc_id, random_date(2025, 2026), "Routine checkup", 
+                    "Patient attends for general checkup without acute symptoms.",
+                    round(random.uniform(50.0, 90.0), 2), round(random.uniform(1.50, 1.90), 2), 
                     f"{random.randint(110, 130)}/{random.randint(70, 85)}", random.randint(60, 100), 
-                    random.randint(12, 20), round(random.uniform(36.5, 38.5), 1), 
-                    json.dumps(phys_exam), random.choice(DIAGNOSTICS), "Rest and hydration."
+                    random.randint(12, 20), round(random.uniform(36.5, 37.5), 1), 
+                    "[BMI: 22.5 (Normal) | QTc: 400 ms]\nPatient in apparent good general condition.",
+                    "Normal sinus rhythm", "Clear lungs", "Glucose 90 mg/dL",
+                    random.choice(DIAGNOSTICS), "Maintain a healthy lifestyle."
                 ))
                 
         except sql.IntegrityError:
-            continue # Skip if random ID duplicates (rare)
+            continue
 
 def run_seed():
     print("--- Starting Database Seeding ---")
     try:
-        # Assumes database.py creates the tables if they don't exist
         db.create_tables() 
-        
-        conexion = db.connect()
-        cursor = conexion.cursor()
-        
+        conn = db.connect()
+        cursor = conn.cursor()
         generate_doctors(cursor)
         generate_patients_and_queries(cursor, num_patients=15)
-        
-        conexion.commit()
-        conexion.close()
+        conn.commit()
+        conn.close()
         print("--- Seeding Completed Successfully! ---")
-        
     except Exception as e:
         print(f"Error during seeding: {e}")
 

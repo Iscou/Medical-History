@@ -1,5 +1,4 @@
-# -------------- Python Environments ----------------------
-
+# --- Python Environments ---
 __pycache__/
 *.py[cod]
 *$py.class
@@ -7,15 +6,24 @@ __pycache__/
 venv/
 env/
 
--------- SQLite3 bd ----------------
+# --- Environment Variables ---
+.env
+
+# --- SQLite3 Database ---
 *.db
 *.sqlite3
+medic_system.db
 
-# --------- Uploaded files by the user ---------
-# We ignore PDFs or images uploaded during testing
+# --- User Uploaded Files ---
+# Ignore PDFs or images uploaded during testing
 src/backend/uploads/*
 !src/backend/uploads/.gitkeep 
 
-# ------------------- SO Files -------------------
+# --- OS Generated Files ---
 .DS_Store
 Thumbs.db
+
+# --- PyInstaller & Build Outputs ---
+build/
+dist/
+*.spec
