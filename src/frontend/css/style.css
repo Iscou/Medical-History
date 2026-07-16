@@ -1,8 +1,8 @@
 /* --- CSS RESET & BASIC STYLING --- */
 :root {
-    --primary-color: #3498db; /* Blue from reference image */
-    --secondary-color: #2c3e50; /* Darker blue */
-    --background-color: #f4f6f8; /* Light gray background */
+    --primary-color: #3498db; 
+    --secondary-color: #2c3e50; 
+    --background-color: #f4f6f8; 
     --sidebar-color: #2c3e50;
     --text-color: #333;
     --white: #ffffff;
@@ -10,6 +10,7 @@
     --sidebar-hover: #4e6d8c;
     --border-color: #dbe0e4;
     --sidebar-width: 260px;
+    --title-bar-bg: #1a1e24; 
 }
 
 * {
@@ -23,26 +24,87 @@ body {
     color: var(--text-color);
     background-color: var(--background-color);
     height: 100vh;
-    overflow: hidden; /* Prevent body scroll, content-body scrolls internally */
+    overflow: hidden; 
+    transition: background-color 0.3s, color 0.3s;
+    display: flex;
+    flex-direction: column;
 }
 
 .hidden {
     display: none !important;
 }
 
-/* --- AUTHENTICATION SCREEN (LOGIN/REGISTER) --- */
+/* --- CUSTOM TITLE BAR --- */
+.custom-title-bar {
+    height: 35px;
+    background-color: var(--title-bar-bg);
+    color: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+    -webkit-app-region: drag; /* This makes it draggable in Pywebview */
+}
+
+.title-bar-left {
+    display: flex;
+    align-items: center;
+    padding-left: 15px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.app-icon {
+    margin-right: 8px;
+    font-size: 16px;
+}
+
+.title-bar-controls {
+    display: flex;
+    height: 100%;
+    -webkit-app-region: no-drag; /* Buttons must NOT be draggable */
+}
+
+.control-btn {
+    background: transparent;
+    border: none;
+    color: #ccc;
+    width: 45px;
+    height: 100%;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.control-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.close-btn:hover {
+    background: #e81123 !important;
+    color: #fff;
+}
+
+/* --- REUSABLE CARDS --- */
+.form-card {
+    background-color: var(--white);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    transition: background-color 0.3s, border-color 0.3s;
+}
+
+/* --- AUTHENTICATION SCREEN --- */
 #auth-screen {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
+    flex: 1; 
 }
 
 .auth-container {
-    background: var(--white);
-    padding: 40px;
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     width: 400px;
     text-align: center;
 }
@@ -79,11 +141,13 @@ body {
     padding: 10px;
     border: 1px solid var(--border-color);
     border-radius: 6px;
+    background-color: var(--white);
+    color: var(--text-color);
 }
 
 .btn-primary {
     background-color: var(--primary-color);
-    color: var(--white);
+    color: #ffffff;
     padding: 12px;
     border: none;
     border-radius: 6px;
@@ -93,7 +157,7 @@ body {
 }
 
 .btn-primary:hover {
-    background-color: #2980b9;
+    filter: brightness(0.9);
 }
 
 .toggle-text {
@@ -101,23 +165,17 @@ body {
     font-size: 14px;
 }
 
-.toggle-text span {
-    color: var(--primary-color);
-    cursor: pointer;
-    font-weight: bold;
-}
-
-/* --- MAIN DASHBOARD LAYOUT (FLEXBOX) --- */
+/* --- MAIN DASHBOARD LAYOUT --- */
 #dashboard-screen {
     display: flex;
-    height: 100vh;
+    flex: 1; 
+    height: calc(100vh - 35px); 
 }
 
-/* Vertical Sidebar (Left Panel) */
 .sidebar {
     width: var(--sidebar-width);
     background-color: var(--sidebar-color);
-    color: var(--white);
+    color: #ffffff;
     display: flex;
     flex-direction: column;
     padding: 20px 0;
@@ -153,11 +211,10 @@ body {
 
 .nav-item.active {
     background-color: var(--primary-color);
-    border-right: 5px solid var(--white);
+    border-right: 5px solid #ffffff;
     font-weight: bold;
 }
 
-/* Main Content Area */
 .main-content {
     flex: 1;
     display: flex;
@@ -165,15 +222,15 @@ body {
     background-color: var(--background-color);
 }
 
-/* Horizontal Topbar (Top Fixed Panel) */
 .topbar {
     height: 70px;
     background-color: var(--white);
     border-bottom: 1px solid var(--border-color);
     display: flex;
-    justify-content: flex-end; /* Align doctor profile to right */
+    justify-content: flex-end; 
     align-items: center;
     padding: 0 30px;
+    transition: background-color 0.3s;
 }
 
 .doc-profile {
@@ -182,29 +239,21 @@ body {
     gap: 10px;
 }
 
-/* Dynamic Content Section (The part that swaps within SPA) */
 .content-body {
     flex: 1;
     padding: 30px;
-    overflow-y: auto; /* Allow scrolling within the content area */
+    overflow-y: auto; 
 }
 
-/* Unified Styling for different "views" */
 .content-view h3 {
     color: var(--secondary-color);
     margin-bottom: 20px;
 }
 
-/* Patients List Styling */
 .patients-action-bar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
-    background: var(--white);
-    padding: 15px;
-    border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
 .search-box {
@@ -225,7 +274,7 @@ body {
 
 .btn-success {
     background-color: var(--success-color);
-    color: var(--white);
+    color: #ffffff;
     padding: 10px 20px;
     border: none;
     border-radius: 6px;
@@ -235,14 +284,11 @@ body {
 }
 
 .btn-success:hover {
-    background-color: #27ae60;
+    filter: brightness(0.9);
 }
 
 /* Patient Table List Styling */
 .patients-list-table {
-    background-color: var(--white);
-    border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     overflow: hidden;
 }
 
@@ -254,24 +300,23 @@ body {
 .patient-table th, .patient-table td {
     text-align: left;
     padding: 15px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .patient-table th {
-    background-color: #f9f9f9;
+    background-color: rgba(0,0,0,0.02);
     color: var(--secondary-color);
     font-weight: 600;
 }
 
 .patient-table tbody tr:hover {
-    background-color: #f1f1f1;
+    background-color: rgba(0,0,0,0.05);
     cursor: pointer;
 }
 
 .empty-list-msg {
     text-align: center;
     padding: 40px;
-    color: #7f8c8d;
 }
 
 /* Forms styling in views */
@@ -290,7 +335,7 @@ body {
 }
 
 #view-create-history h5 {
-    color: #7f8c8d;
+    color: var(--secondary-color);
     margin-top: 20px;
 }
 
@@ -299,9 +344,48 @@ input, select, textarea {
     border: 1px solid var(--border-color);
     border-radius: 6px;
     width: 100%;
+    background-color: var(--white);
+    color: var(--text-color);
+    font-family: inherit;
 }
 
 textarea {
     grid-column: span 2;
     resize: vertical;
 }
+
+/* --- DARK MODE OVERRIDES --- */
+body.dark-mode {
+    --background-color: #121212;
+    --white: #1e1e1e;
+    --text-color: #e0e0e0;
+    --sidebar-color: #111111;
+    --secondary-color: #90caf9;
+    --border-color: #333333;
+    --title-bar-bg: #0d0d0d;
+}
+
+body.dark-mode .patient-table th { 
+    background-color: #2c2c2c; 
+    color: var(--secondary-color); 
+}
+
+body.dark-mode .patient-table tbody tr:hover { 
+    background-color: #2a2a2a; 
+}
+
+body.dark-mode input, 
+body.dark-mode select, 
+body.dark-mode textarea {
+    background-color: #2c2c2c;
+    color: #e0e0e0;
+    border-color: #444;
+}
+
+body.dark-mode input:disabled { 
+    background-color: #444; 
+    color: #888;
+}
+
+body.dark-mode .btn-primary { color: #fff; }
+body.dark-mode .btn-success { color: #fff; }

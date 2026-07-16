@@ -337,17 +337,21 @@ async def create_patient_history(
     except Exception as e:
         return {"status": "error", "msg": f"Database error: {str(e)}"}
 
-@api_router.get("/patient/details/{document_id}")
-def get_patient_details(document_id: str):
+@api_router.get("/patient/details/{doctor_id}/{document_id}")
+def get_patient_details(doctor_id: int, document_id: str):
+    """Fetches patient info with STRICT PRIVACY check via doctor_id"""
     try:
         conn = database.connect()
         conn.row_factory = sqlite3.Row 
         cursor = conn.cursor()
         
-        cursor.execute("SELECT * FROM patients WHERE document_id = ?", (document_id,))
+        # Security: Must match both document_id AND doctor_id
+        cursor.execute("SELECT * FROM patients WHERE document_id = ? AND doctor_id = ?", (document_id, doctor_id))
         patient = cursor.fetchone()
+        
         if not patient:
-            return {"status": "error", "msg": "Patient not found"}
+            conn.close()
+            return {"status": "error", "msg": "Patient not found or unauthorized access."}
             
         cursor.execute("SELECT * FROM queries WHERE patient_document_id = ? ORDER BY date DESC, id DESC", (document_id,))
         queries = cursor.fetchall()

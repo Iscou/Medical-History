@@ -10,8 +10,33 @@ const appState = {
     currentPatientQueries: []
 };
 
-// --- AUTO-LOGIN (Asegurado con Event Listener) ---
-document.addEventListener('DOMContentLoaded', () => {
+// --- WINDOWS CONTROLS API BINDING ---
+const windowAPI = {
+    minimize: () => { if(window.pywebview) pywebview.api.minimize(); },
+    toggle_maximize: () => { if(window.pywebview) pywebview.api.toggle_maximize(); },
+    close: () => { if(window.pywebview) pywebview.api.close(); }
+};
+
+// --- THEME INITIALIZATION ---
+function initTheme() {
+    const savedTheme = localStorage.getItem('theme');
+    const toggleIcon = document.getElementById('theme-toggle');
+    if (savedTheme === 'dark') {
+        document.body.classList.add('dark-mode');
+        if (toggleIcon) toggleIcon.innerText = '☀️';
+    }
+}
+
+function toggleTheme() {
+    const body = document.body;
+    body.classList.toggle('dark-mode');
+    const isDark = body.classList.contains('dark-mode');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    document.getElementById('theme-toggle').innerText = isDark ? '☀️' : '🌙';
+}
+
+// --- AUTO-LOGIN INITIALIZATION ---
+function initAutoLogin() {
     const savedDoctorId = localStorage.getItem('doctorId');
     const savedDoctorName = localStorage.getItem('doctorName');
     const savedDoctorEmail = localStorage.getItem('doctorEmail');
@@ -25,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('auth-screen').classList.add('hidden'); 
         document.getElementById('dashboard-screen').classList.remove('hidden'); 
         document.getElementById('topbar-doc-name').innerText = appState.doctorName;
-        document.getElementById('welcome-message').innerText = `Bienvenido, ${appState.doctorName}`;
+        document.getElementById('welcome-message').innerText = `Welcome, ${appState.doctorName}`;
         
         const savedSig = localStorage.getItem(`signature_${appState.doctorId}`);
         if(savedSig) {
@@ -34,6 +59,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         switchView('summary');
     }
+}
+
+// Bootstrap initialization once DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    initTheme();
+    initAutoLogin();
 });
 
 // --- LOGIN/REGISTER TOGGLE LOGIC ---
@@ -47,13 +78,13 @@ function toggleAuthMode(mode) {
         formLogin.classList.add('hidden');
         formRegister.classList.remove('hidden');
         formRegister.classList.add('active');
-        subtitle.innerText = "Cree una nueva cuenta de médico";
+        subtitle.innerText = "Create a new medical account";
     } else {
         formRegister.classList.remove('active');
         formRegister.classList.add('hidden');
         formLogin.classList.remove('hidden');
         formLogin.classList.add('active');
-        subtitle.innerText = "Bienvenido doctor, por favor inicie sesión";
+        subtitle.innerText = "Welcome doctor, please log in";
     }
 }
 
@@ -61,12 +92,12 @@ function toggleAuthMode(mode) {
 async function requestOTP() {
     const email = document.getElementById('reg-email').value;
     if (!email) {
-        alert("Por favor, ingrese un correo electrónico primero.");
+        alert("Please, input an email address first.");
         return;
     }
 
     const btn = document.getElementById('btn-send-otp');
-    btn.innerText = "Enviando...";
+    btn.innerText = "Sending...";
     btn.disabled = true;
 
     try {
@@ -80,15 +111,15 @@ async function requestOTP() {
         if (data.status === 'success') {
             alert(data.msg);
             document.getElementById('otp-section').classList.remove('hidden');
-            btn.innerText = "Reenviar Código";
+            btn.innerText = "Resend Code";
         } else {
             alert(`Error: ${data.msg}`);
-            btn.innerText = "1. Solicitar Código al Correo";
+            btn.innerText = "1. Request Code via Email";
         }
     } catch (error) {
         console.error("OTP Error:", error);
-        alert("Error de conexión al intentar enviar el correo.");
-        btn.innerText = "1. Solicitar Código al Correo";
+        alert("Connection error trying to send the email.");
+        btn.innerText = "1. Request Code via Email";
     }
     btn.disabled = false;
 }
@@ -102,7 +133,7 @@ document.getElementById('form-register').addEventListener('submit', async functi
     const code = document.getElementById('reg-otp').value; 
 
     if (!code) {
-        alert("Debe ingresar el código de verificación enviado a su correo.");
+        alert("You must enter the verification code sent to your email.");
         return;
     }
 
@@ -115,17 +146,17 @@ document.getElementById('form-register').addEventListener('submit', async functi
         const data = await response.json();
         
         if (data.status === 'success') {
-            alert("Cuenta creada exitosamente. Ahora puede iniciar sesión.");
+            alert("Account created successfully. You can now log in.");
             toggleAuthMode('login'); 
             document.getElementById('form-register').reset();
             document.getElementById('otp-section').classList.add('hidden'); 
-            document.getElementById('btn-send-otp').innerText = "1. Solicitar Código al Correo";
+            document.getElementById('btn-send-otp').innerText = "1. Request Code via Email";
         } else {
             alert(`Error: ${data.msg}`);
         }
     } catch (error) {
         console.error("Register fetch error:", error);
-        alert("Error de conexión con el servidor.");
+        alert("Server connection error.");
     }
 });
 
@@ -152,7 +183,7 @@ document.getElementById('form-login').addEventListener('submit', async function(
             document.getElementById('auth-screen').classList.add('hidden'); 
             document.getElementById('dashboard-screen').classList.remove('hidden'); 
             document.getElementById('topbar-doc-name').innerText = appState.doctorName;
-            document.getElementById('welcome-message').innerText = `Bienvenido, ${appState.doctorName}`;
+            document.getElementById('welcome-message').innerText = `Welcome, ${appState.doctorName}`;
             
             const savedSig = localStorage.getItem(`signature_${appState.doctorId}`);
             if(savedSig) {
@@ -160,14 +191,14 @@ document.getElementById('form-login').addEventListener('submit', async function(
                 document.getElementById('preview-signature').style.display = 'block';
             }
 
-            // Save for the Auto-Login
+            // Save for Auto-Login
             localStorage.setItem('doctorId', data.doctor_id);
             localStorage.setItem('doctorName', data.doctor_name);
             localStorage.setItem('doctorEmail', email); 
 
             switchView('summary');
         } else {
-            alert("Credenciales inválidas");
+            alert("Invalid credentials.");
         }
     } catch (error) {
         console.error("Login fetch error:", error);
@@ -276,7 +307,7 @@ async function handleCreatePatient(e) {
     formData.append("motive", document.getElementById('cp-motive').value);
     formData.append("current_illness", document.getElementById('cp-illness').value);
 
-    // Antecedentes 
+    // Background
     let uroObs = document.getElementById('cp-int-uro').value;
     if (document.getElementById('cp-pat-gender').value === 'female') {
         const obs = document.getElementById('cp-int-obs').value;
@@ -296,7 +327,7 @@ async function handleCreatePatient(e) {
     formData.append("habits", document.getElementById('cp-int-habits').value);
     formData.append("family_background", document.getElementById('cp-int-family').value);
 
-    // Conversión de Unidades
+    // Unit Conversion
     let finalWeight = parseFloat(document.getElementById('cp-weight').value) || 0;
     if (document.getElementById('cp-weight-unit').value === 'lb') finalWeight = finalWeight * 0.453592;
 
@@ -306,7 +337,7 @@ async function handleCreatePatient(e) {
     formData.append("weight", finalWeight.toFixed(2));
     formData.append("height", finalHeight.toFixed(2));
     
-    // Signos Vitales y Cálculo inyectado
+    // Vitals and Physical Exam
     formData.append("blood_pressure", document.getElementById('cp-bp').value);
     formData.append("heart_rate", document.getElementById('cp-hr').value || 0);
     formData.append("temperature", document.getElementById('cp-temp').value || 0);
@@ -342,7 +373,8 @@ async function handleCreatePatient(e) {
 // --- PATIENT DETAILS & PDF GENERATOR ---
 async function loadPatientDetails(document_id) {
     try {
-        const response = await fetch(`http://127.0.0.1:8000/patient/details/${document_id}`);
+        // STRICT PRIVACY: Added doctorId to URL query matching backend requirements
+        const response = await fetch(`http://127.0.0.1:8000/patient/details/${appState.doctorId}/${document_id}`);
         const data = await response.json();
         
         if (data.status === 'success') {
@@ -384,7 +416,7 @@ async function loadPatientDetails(document_id) {
                 }
 
                 timeline.innerHTML += `
-                    <div style="border-left: 3px solid var(--primary-color); padding-left: 15px; margin-bottom: 15px; background: #f9f9f9; padding: 10px; border-radius: 0 5px 5px 0;">
+                    <div style="border-left: 3px solid var(--primary-color); padding-left: 15px; margin-bottom: 15px; background: var(--white); padding: 10px; border-radius: 0 5px 5px 0;">
                         <span style="font-size: 12px; color: #7f8c8d;">Fecha: ${q.date}</span>
                         <h6 style="color: var(--secondary-color); margin: 5px 0 10px 0;">Motivo: ${q.motive}</h6>
                         <p style="font-size: 13px; margin-bottom: 5px;"><strong>Enfermedad Actual / Evolución:</strong><br>${q.current_illness.replace(/\n/g, '<br>')}</p>
